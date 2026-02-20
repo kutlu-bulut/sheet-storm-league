@@ -385,6 +385,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div style="display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;width:fit-content;margin-bottom:28px">
       <button class="admin-sub-tab" id="atab-points" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--accent);color:#fff;" onclick="showAdminTab('points',this)">Points</button>
       <button class="admin-sub-tab" id="atab-players" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('players',this)">Players</button>
+      <button class="admin-sub-tab" id="atab-results" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('results',this)">Results</button>
     </div>
 
     <div class="admin-tab active" id="admintab-points">
@@ -490,6 +491,14 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         </tr></tbody>
         </table>
         <div style="margin-top:20px"><button class="btn" onclick="savePasswords()">Save to Firebase</button></div>
+      </div>
+    </div>
+
+    <div class="admin-tab" id="admintab-results">
+      <div class="admin-card" style="max-width:800px">
+        <div class="admin-title">📋 All Results</div>
+        <div class="admin-sub">Edit or delete any recorded game result.</div>
+        <div id="adminResultsList"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
       </div>
     </div>
 
@@ -603,6 +612,7 @@ function showAdminTab(name, btn) {
   document.querySelectorAll('.admin-sub-tab').forEach(t => { t.style.background = 'none'; t.style.color = 'var(--muted)'; });
   document.getElementById('admintab-' + name).classList.add('active');
   btn.style.background = 'var(--accent)'; btn.style.color = '#fff';
+  if (name === 'results') loadAdminResults();
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
@@ -894,9 +904,115 @@ async function savePasswords() {
   showToast('✅ Passwords saved for '+saved+' players!');
 }
 
+// ── ADMIN RESULTS ────────────────────────────────────────────
+function loadAdminResults() {
+  const container = document.getElementById('adminResultsList');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+  db.collection('results').orderBy('createdAt','desc').get().then(snapshot => {
+    if (snapshot.empty) { container.innerHTML = '<div class="empty-state">No results yet</div>'; return; }
+    const rows = [];
+    snapshot.forEach(d => {
+      const r = d.data(), id = d.id;
+      const date = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
+      const dateStr = date.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+      rows.push(`<tr>
+        <td style="font-size:13px;color:var(--muted)">${dateStr}</td>
+        <td style="font-size:13px">${r.gameType}</td>
+        <td style="font-size:13px;font-weight:600">🏆 ${r.winner}</td>
+        <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
+            <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}','${r.winner}',${JSON.stringify(r.participants||[])})">✕ Delete</button>
+          </div>
+        </td>
+      </tr>`);
+    });
+    container.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:0 8px 12px">Date</th>
+        <th style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:0 8px 12px">Game</th>
+        <th style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:0 8px 12px">Winner</th>
+        <th style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:0 8px 12px">Players</th>
+        <th style="padding:0 8px 12px"></th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+  }).catch(e => { container.innerHTML = '<div class="empty-state">Error loading results</div>'; console.error(e); });
+}
+
+function openEditModal(id, gameType, winner, date) {
+  document.getElementById('editResultId').value = id;
+  document.getElementById('editGameType').value = gameType;
+  document.getElementById('editWinner').value = winner;
+  document.getElementById('editDate').value = date;
+  document.getElementById('editResultModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeEditModal() {
+  document.getElementById('editResultModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.getElementById('editResultModal').addEventListener('click', e => { if(e.target===document.getElementById('editResultModal')) closeEditModal(); });
+
+async function saveEditResult() {
+  const id = document.getElementById('editResultId').value;
+  const gameType = document.getElementById('editGameType').value.trim();
+  const winner = document.getElementById('editWinner').value;
+  const date = document.getElementById('editDate').value;
+  if (!gameType || !winner || !date) { showToast('Please fill in all fields', true); return; }
+  const btn = document.querySelector('#editResultModal .form-submit');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    await db.collection('results').doc(id).update({
+      gameType,
+      winner,
+      playedAt: new Date(date + 'T12:00:00')
+    });
+    closeEditModal();
+    showToast('✅ Result updated!');
+    loadAdminResults();
+  } catch(e) { showToast('Error updating result', true); console.error(e); }
+  btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+async function deleteResult(id, winner, participants) {
+  if (!confirm('Delete this result? This will NOT automatically adjust player stats.')) return;
+  try {
+    await db.collection('results').doc(id).delete();
+    showToast('🗑 Result deleted');
+    loadAdminResults();
+  } catch(e) { showToast('Error deleting result', true); console.error(e); }
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 seedPlayersIfNeeded().catch(console.error);
 </script>
+
+<!-- EDIT RESULT MODAL -->
+<div class="modal-overlay" id="editResultModal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <div class="modal-title">Edit Result</div>
+    <div class="modal-sub">Update the game details</div>
+    <input type="hidden" id="editResultId">
+    <div class="form-row">
+      <label class="form-label">Game type</label>
+      <input class="form-inp" type="text" id="editGameType">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Winner</label>
+      <select class="form-sel" id="editWinner">
+        <option>Andreea</option><option>Kutlu</option><option>Linn</option><option>Ludvig</option><option>Nicolay</option><option>Robert</option><option>Teddy</option><option>Xin</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Date</label>
+      <input class="form-inp" type="date" id="editDate">
+    </div>
+    <button class="form-submit" onclick="saveEditResult()">Save Changes</button>
+  </div>
+</div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
   Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
