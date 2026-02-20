@@ -240,7 +240,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.2</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.3</span></div>
   </div>
 </div>
 
@@ -509,7 +509,7 @@ async function doLogin() {
     const data = snap.data();
     currentUser = { name: selectedLogin, ...data };
     localStorage.setItem('ssl_user', selectedLogin);
-    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('loginScreen').remove();
     document.getElementById('mainNav').style.display = 'block';
     document.getElementById('mainContainer').style.display = 'block';
     if (data.isAdmin) document.getElementById('adminTab').style.display = 'inline-block';
@@ -840,16 +840,10 @@ function logout() {
   localStorage.removeItem('ssl_user');
   currentUser = null;
   selectedLogin = null;
-  document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('mainNav').style.display = 'none';
   document.getElementById('mainContainer').style.display = 'none';
-  document.getElementById('adminTab').style.display = 'none';
-  document.getElementById('loginPw').value = '';
-  document.getElementById('loginErr').textContent = '';
-  document.querySelectorAll('.login-chip').forEach(c => c.classList.remove('sel'));
-  // Reset to leaderboard for next login
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-leaderboard').classList.add('active');
+  // Reload page — cleanest way to reset all state and remove any cached DOM
+  window.location.reload();
 }
 
 function adjustPts(key,delta) {
@@ -975,7 +969,7 @@ seedPlayersIfNeeded().catch(console.error);
     const data = snap.data();
     currentUser = { name: saved, ...data };
     selectedLogin = saved;
-    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('loginScreen').remove();
     document.getElementById('mainNav').style.display = 'block';
     document.getElementById('mainContainer').style.display = 'block';
     if (data.isAdmin) document.getElementById('adminTab').style.display = 'inline-block';
@@ -1015,7 +1009,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.3</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
