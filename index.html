@@ -236,11 +236,11 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="login-label">Who are you?</div>
     <div class="login-players"><div class="login-chip" data-name="Andreea" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Courageous warrior">⚔️</span>Andreea</div><div class="login-chip" data-name="Kutlu" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Blessed & lucky">🍀</span>Kutlu</div><div class="login-chip" data-name="Linn" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Waterfall & lake">🌊</span>Linn</div><div class="login-chip" data-name="Ludvig" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Renowned in battle">🛡️</span>Ludvig</div><div class="login-chip" data-name="Nicolay" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Victory of the people">✊</span>Nicolay</div><div class="login-chip" data-name="Robert" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Bright fame">⭐</span>Robert</div><div class="login-chip" data-name="Teddy" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Gift of God">🎁</span>Teddy</div><div class="login-chip" data-name="Xin" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="New & joyful">🌱</span>Xin</div></div>
     <label class="login-label">Password</label>
-    <input class="login-input" type="password" id="loginPw" placeholder="Password">
+    <input class="login-input" type="password" id="loginPw" placeholder="Password" autocomplete="off" data-1p-ignore data-lpignore="true">
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.3</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.4</span></div>
   </div>
 </div>
 
@@ -566,7 +566,7 @@ async function loadPlayersTable() {
       <td><div class="pmini"><div class="av-sm" style="background:${color}">${init}</div>${name}</div></td>
       <td><select class="rsel">${roleOpts}</select></td>
       <td><div style="display:flex;align-items:center;gap:4px">
-        <input class="pw-input" type="password" data-player="${name}" value="${pw}" />
+        <input class="pw-input" type="text" data-player="${name}" value="${pw}" autocomplete="off" data-1p-ignore data-lpignore="true" style="font-family:monospace" />
         <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
       </div></td>
       <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ${isAdmin}><span class="toggle-slider"></span></label></td>
@@ -1009,7 +1009,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.3</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.4</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
