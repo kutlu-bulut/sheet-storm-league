@@ -679,7 +679,7 @@ function loadRecentGames() {
     const rg = document.getElementById('recentGames');
     if (!results.length) { rg.innerHTML = '<div class="empty-state">No games yet!</div>'; return; }
     rg.innerHTML = results.slice(0,8).map(r => {
-      const d = r.playedAt?.toDate ? r.playedAt.toDate() : new Date(r.playedAt);
+      const d = r.playedAt?.toDate ? r.playedAt.toDate() : (r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt));
       return `<div class="recent-game">
         <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
         <div class="gpill">${r.gameType}</div>
@@ -757,7 +757,7 @@ async function submitResult() {
     for (const p of participants.filter(p=>p!==winner)) {
       await db.collection('players').doc(p).update({
         points: firebase.firestore.FieldValue.increment(pts.participant),
-        streak: 0,
+        streak: 0,  // reset streak on loss
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
       });
     }
@@ -805,9 +805,9 @@ async function openProfile(name) {
   document.getElementById('profWins').textContent=p.wins||0;
   document.getElementById('profPts').textContent=p.points||0;
   document.getElementById('profStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
-  const rSnap = await db.collection('results').orderBy('playedAt','desc').get();
+  const rSnap = await db.collection('results').get();
   const results=[]; rSnap.forEach(d=>results.push(d.data()));
-  const mine=results.filter(r=>r.participants?.includes(name));
+  const mine=results.filter(r=>r.participants?.includes(name)).sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
   const gc={};
   mine.forEach(r=>{gc[r.gameType]=(gc[r.gameType]||0)+1;});
   const entries=Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,4);
@@ -821,7 +821,7 @@ async function openProfile(name) {
       </div>
     </div>`).join(''):'<div style="color:var(--muted);font-size:13px">No games yet</div>';
   document.getElementById('profHistory').innerHTML=mine.slice(0,5).map(r=>{
-    const d=r.playedAt?.toDate?r.playedAt.toDate():new Date(r.playedAt);
+    const d=r.playedAt?.toDate?r.playedAt.toDate():r.playedAt?.seconds?new Date(r.playedAt.seconds*1000):new Date(r.playedAt);
     const won=r.winner===name;
     return `<div class="hist-row">
       <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
@@ -850,10 +850,10 @@ async function populateMyStats() {
   const allSnap=await db.collection('players').orderBy('points','desc').get();
   let rank=1; allSnap.forEach(d=>{ if(d.id!==name&&(d.data().points||0)>(p.points||0)) rank++; });
   document.getElementById('myRank').textContent='#'+rank;
-  const rSnap=await db.collection('results').orderBy('playedAt','desc').get();
-  const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name)) mine.push(r); });
+  const rSnap=await db.collection('results').get();
+  const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name)) mine.push(r); }); mine.sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
   document.getElementById('myHistory').innerHTML=mine.slice(0,8).map(r=>{
-    const d=r.playedAt?.toDate?r.playedAt.toDate():new Date(r.playedAt);
+    const d=r.playedAt?.toDate?r.playedAt.toDate():r.playedAt?.seconds?new Date(r.playedAt.seconds*1000):new Date(r.playedAt);
     const won=r.winner===name;
     return `<div class="hist-row">
       <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
@@ -888,8 +888,8 @@ async function savePasswords() {
     const nameEl=row.querySelector('.pmini');
     const pwEl=row.querySelector('.pw-input');
     if(!nameEl||!pwEl)continue;
-    const name=nameEl.textContent.trim(), pw=pwEl.value.trim();
-    if(name&&pw) { await db.collection('players').doc(name).update({password:pw}); saved++; }
+    const name=nameEl.childNodes[nameEl.childNodes.length-1].textContent.trim(), pw=pwEl.value.trim();
+    if(name&&pw) { try { await db.collection('players').doc(name).update({password:pw}); saved++; } catch(e) { console.error('Failed for '+name, e); } }
   }
   showToast('✅ Passwords saved for '+saved+' players!');
 }
