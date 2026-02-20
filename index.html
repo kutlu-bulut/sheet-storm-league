@@ -240,7 +240,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.1</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.2</span></div>
   </div>
 </div>
 
@@ -327,6 +327,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <span id="userBadgeName"></span>
       </div>
       <button class="add-btn" onclick="openModal()">＋ Add Result</button>
+      <button onclick="logout()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:border-color 0.15s,color 0.15s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Sign out</button>
     </div>
   </div>
 </nav>
@@ -507,6 +508,7 @@ async function doLogin() {
     }
     const data = snap.data();
     currentUser = { name: selectedLogin, ...data };
+    localStorage.setItem('ssl_user', selectedLogin);
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainNav').style.display = 'block';
     document.getElementById('mainContainer').style.display = 'block';
@@ -834,6 +836,22 @@ async function populateMyStats() {
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
+function logout() {
+  localStorage.removeItem('ssl_user');
+  currentUser = null;
+  selectedLogin = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('mainNav').style.display = 'none';
+  document.getElementById('mainContainer').style.display = 'none';
+  document.getElementById('adminTab').style.display = 'none';
+  document.getElementById('loginPw').value = '';
+  document.getElementById('loginErr').textContent = '';
+  document.querySelectorAll('.login-chip').forEach(c => c.classList.remove('sel'));
+  // Reset to leaderboard for next login
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-leaderboard').classList.add('active');
+}
+
 function adjustPts(key,delta) {
   pts[key]=Math.max(0,pts[key]+delta);
   document.getElementById('pts-'+key).textContent=pts[key];
@@ -946,6 +964,29 @@ async function deleteResult(id, winner, participants) {
 
 // ── INIT ──────────────────────────────────────────────────────
 seedPlayersIfNeeded().catch(console.error);
+
+// Auto-login from saved session
+(async () => {
+  const saved = localStorage.getItem('ssl_user');
+  if (!saved) return;
+  try {
+    const snap = await db.collection('players').doc(saved).get();
+    if (!snap.exists) { localStorage.removeItem('ssl_user'); return; }
+    const data = snap.data();
+    currentUser = { name: saved, ...data };
+    selectedLogin = saved;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainNav').style.display = 'block';
+    document.getElementById('mainContainer').style.display = 'block';
+    if (data.isAdmin) document.getElementById('adminTab').style.display = 'inline-block';
+    const av = document.getElementById('userBadgeAv');
+    av.style.background = data.color || PLAYER_CONFIG[saved]?.color;
+    av.textContent = data.init || saved.slice(0,2);
+    document.getElementById('userBadgeName').textContent = saved;
+    loadLeaderboard();
+    loadRecentGames();
+  } catch(e) { console.error('Auto-login failed', e); }
+})();
 </script>
 
 <!-- EDIT RESULT MODAL -->
@@ -974,7 +1015,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
