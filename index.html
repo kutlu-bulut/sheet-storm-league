@@ -240,6 +240,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.1</span></div>
   </div>
 </div>
 
@@ -416,79 +417,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="admin-sub">Click 👁 to reveal passwords. Hit Save when done.</div>
         <table class="pl-table">
           <thead><tr><th>Player</th><th>Role</th><th>Password</th><th>Admin</th><th></th></tr></thead>
-          <tbody id="playersTableBody"><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#a78bfa,#ec4899)">A</div>Andreea</div></td>
-          <td><select class="rsel"><option>PM</option><option  selected>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Andreea" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#06d6a0,#0ea5e9)">K</div>Kutlu</div></td>
-          <td><select class="rsel"><option>PM</option><option>Dev</option><option>UX</option><option  selected>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Kutlu" value="admin" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" checked><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#ffd166,#f59e0b)">L</div>Linn</div></td>
-          <td><select class="rsel"><option>PM</option><option  selected>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Linn" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#f97316,#ffd166)">Lu</div>Ludvig</div></td>
-          <td><select class="rsel"><option>PM</option><option  selected>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Ludvig" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#6c63ff,#a78bfa)">N</div>Nicolay</div></td>
-          <td><select class="rsel"><option  selected>PM</option><option>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Nicolay" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#06d6a0,#84cc16)">R</div>Robert</div></td>
-          <td><select class="rsel"><option>PM</option><option  selected>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Robert" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#0ea5e9,#6c63ff)">T</div>Teddy</div></td>
-          <td><select class="rsel"><option>PM</option><option  selected>Dev</option><option>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Teddy" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr><tr>
-          <td><div class="pmini"><div class="av-sm" style="background:linear-gradient(135deg,#ff6b6b,#f97316)">X</div>Xin</div></td>
-          <td><select class="rsel"><option>PM</option><option>Dev</option><option  selected>UX</option><option>PS</option></select></td>
-          <td><div style="display:flex;align-items:center;gap:4px">
-            <input class="pw-input" type="password" data-player="Xin" value="1234" />
-            <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
-          </div></td>
-          <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ><span class="toggle-slider"></span></label></td>
-          <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
-        </tr></tbody>
+          <tbody id="playersTableBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
         </table>
         <div style="margin-top:20px"><button class="btn" onclick="savePasswords()">Save to Firebase</button></div>
       </div>
@@ -613,6 +542,36 @@ function showAdminTab(name, btn) {
   document.getElementById('admintab-' + name).classList.add('active');
   btn.style.background = 'var(--accent)'; btn.style.color = '#fff';
   if (name === 'results') loadAdminResults();
+  if (name === 'players') loadPlayersTable();
+}
+
+async function loadPlayersTable() {
+  const tbody = document.getElementById('playersTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr>';
+  const snap = await db.collection('players').orderBy('name').get();
+  const PLAYER_CFG = PLAYER_CONFIG;
+  const rows = [];
+  snap.forEach(d => {
+    const p = d.data(), name = d.id;
+    const cfg = PLAYER_CFG[name] || {};
+    const color = p.color || cfg.color || 'var(--accent)';
+    const init = p.init || cfg.init || name.slice(0,2);
+    const role = p.role || 'Dev';
+    const roleOpts = ['PM','Dev','UX','PS'].map(r => `<option${r===role?' selected':''}>${r}</option>`).join('');
+    const pw = p.password || '';
+    const isAdmin = p.isAdmin ? 'checked' : '';
+    rows.push(`<tr>
+      <td><div class="pmini"><div class="av-sm" style="background:${color}">${init}</div>${name}</div></td>
+      <td><select class="rsel">${roleOpts}</select></td>
+      <td><div style="display:flex;align-items:center;gap:4px">
+        <input class="pw-input" type="password" data-player="${name}" value="${pw}" />
+        <button onclick="togglePwVis(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px">👁</button>
+      </div></td>
+      <td style="text-align:center"><label class="toggle" style="margin:0 auto"><input type="checkbox" ${isAdmin}><span class="toggle-slider"></span></label></td>
+      <td><button class="icon-btn" onclick="this.closest('tr').remove()">✕</button></td>
+    </tr>`);
+  });
+  tbody.innerHTML = rows.join('');
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
@@ -1015,7 +974,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
