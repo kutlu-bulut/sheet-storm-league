@@ -1228,11 +1228,16 @@ const DEFAULT_GAME_TYPES = [
 ];
 
 async function getGameTypes() {
-  const snap = await db.collection('config').doc('gameTypes').get();
-  if (snap.exists && snap.data().types?.length) return snap.data().types;
-  // Seed defaults if not set
-  await db.collection('config').doc('gameTypes').set({ types: DEFAULT_GAME_TYPES });
-  return DEFAULT_GAME_TYPES;
+  try {
+    const snap = await db.collection('config').doc('gameTypes').get();
+    if (snap.exists && snap.data().types?.length) return snap.data().types;
+    // Doc missing or empty — write defaults
+    await db.collection('config').doc('gameTypes').set({ types: DEFAULT_GAME_TYPES });
+    return DEFAULT_GAME_TYPES;
+  } catch(e) {
+    console.error('getGameTypes error:', e);
+    return [...DEFAULT_GAME_TYPES];
+  }
 }
 
 async function loadGameTypes() {
