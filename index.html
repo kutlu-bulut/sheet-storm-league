@@ -511,6 +511,11 @@ let currentUser = null;
 let selectedLogin = null;
 const chipState = {};
 let pts = { winner:3, participant:1, streak:1 };
+const DEFAULT_GAME_TYPES = [
+  { emoji: '🎯', name: 'Kahoot' },
+  { emoji: '🔤', name: 'Hangman' },
+  { emoji: '🧩', name: 'Puzzle' },
+];
 
 // ── SEED PLAYERS ─────────────────────────────────────────────
 async function seedPlayersIfNeeded() {
@@ -1061,7 +1066,8 @@ function closeEditModal() {
   document.getElementById('editResultModal').classList.remove('open');
   document.body.style.overflow = '';
 }
-document.getElementById('editResultModal').addEventListener('click', e => { if(e.target===document.getElementById('editResultModal')) closeEditModal(); });
+// editResultModal close on backdrop click
+document.addEventListener('click', e => { const m = document.getElementById('editResultModal'); if(m && e.target===m) closeEditModal(); });
 
 async function saveEditResult() {
   const id = document.getElementById('editResultId').value;
@@ -1221,11 +1227,6 @@ async function loadWeekly() {
 }
 
 // ── GAME TYPES ───────────────────────────────────────────────
-const DEFAULT_GAME_TYPES = [
-  { emoji: '🎯', name: 'Kahoot' },
-  { emoji: '🔤', name: 'Hangman' },
-  { emoji: '🧩', name: 'Puzzle' },
-];
 
 async function getGameTypes() {
   try {
