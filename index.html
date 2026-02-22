@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
 <!-- Firebase v9 compat (global SDK — no import needed) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
@@ -221,6 +222,19 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
 .toast.show{transform:translateX(-50%) translateY(0);}
 .toast.error{border-color:var(--accent2);}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:768px){
+  .nav-tabs{display:none;position:fixed;top:64px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border);flex-direction:column;padding:8px;z-index:49;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+  .nav-tabs.mobile-open{display:flex;}
+  .nav-tab{text-align:left;padding:12px 16px;border-radius:8px;}
+  .brand-sub{display:none;}
+  .brand-name{font-size:15px;}
+  .nav-right .tx-credit{display:none;}
+  #userBadgeName{display:none;}
+  .hamburger{display:flex!important;}
+  .champ-stats{display:none;}
+  .my-nums{margin-left:0;}
+}
+@media(min-width:769px){.hamburger{display:none!important;}}
 </style>
 </head>
 <body>
@@ -240,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.5</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.0</span></div>
   </div>
 </div>
 
@@ -310,6 +324,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPage('leaderboard',this)">Leaderboard</button>
+      <button class="nav-tab" onclick="showPage('weekly',this);loadWeekly()">Weekly</button>
       <button class="nav-tab" onclick="showPage('games',this)">Games</button>
       <button class="nav-tab" onclick="showPage('mystats',this)">My Stats</button>
       <button class="nav-tab" id="adminTab" onclick="showPage('admin',this)" style="display:none">⚙ Admin</button>
@@ -319,6 +334,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="user-av" id="userBadgeAv"></div>
         <span id="userBadgeName"></span>
       </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileNav()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--text);font-size:18px;line-height:1">☰</button>
       <button class="add-btn" onclick="openModal()">＋ Add Result</button>
       <button onclick="logout()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:border-color 0.15s,color 0.15s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Sign out</button>
     </div>
@@ -334,6 +350,21 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="section-title">All-time standings</div>
     <div class="col-header"><div>#</div><div>Player</div><div>Streak</div><div class="col-right">Wins</div><div class="col-right">Points</div></div>
     <div id="leaderboardRows"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
+  </div>
+
+  <!-- WEEKLY -->
+  <div class="page" id="page-weekly">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Weekly Standings</h2>
+        <p style="font-size:13px;color:var(--muted)" id="weekLabel">This week</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn sec sm" onclick="changeWeek(-1)">← Prev</button>
+        <button class="btn sec sm" onclick="changeWeek(1)" id="nextWeekBtn">Next →</button>
+      </div>
+    </div>
+    <div id="weeklyLeaderboard"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
 
   <!-- GAMES -->
@@ -366,6 +397,12 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="my-stat"><div class="my-stat-val" id="myWins">—</div><div class="my-stat-label">Wins</div></div>
         <div class="my-stat"><div class="my-stat-val" id="myPts">—</div><div class="my-stat-label">Points</div></div>
         <div class="my-stat"><div class="my-stat-val" id="myGames">—</div><div class="my-stat-label">Games</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="section-title">Points over time</div>
+      <div style="position:relative;height:180px">
+        <canvas id="progressChart"></canvas>
       </div>
     </div>
     <div class="card"><div class="section-title">My game history</div><div id="myHistory"></div></div>
@@ -527,6 +564,7 @@ async function doLogin() {
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
+    loadPoints();
   } catch(e) {
     err.textContent = 'Connection error — check internet';
     console.error(e);
@@ -718,10 +756,26 @@ async function submitResult() {
   const participants = Object.keys(chipState).filter(k => chipState[k]>0);
   if (participants.length < 2) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select at least 2 players</span>'; return; }
   const btn = document.querySelector('.form-submit');
-  btn.disabled=true; btn.textContent='Saving...';
+  btn.disabled=true; btn.textContent='Checking...';
   const gameType = document.getElementById('gameType').value;
   const gameDate = document.getElementById('gameDate').value;
   try {
+    // Duplicate check: same game type + date + winner
+    const dupCheck = await db.collection('results').get();
+    const dupFound = [];
+    dupCheck.forEach(d => {
+      const r = d.data();
+      const rd = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
+      const rdStr = rd.toISOString().split('T')[0];
+      if (rdStr === gameDate && r.gameType === gameType) dupFound.push(r);
+    });
+    if (dupFound.length > 0) {
+      const existingWinner = dupFound[0].winner;
+      if (!confirm(`A ${gameType} result for ${gameDate} already exists (winner: ${existingWinner}). Add anyway?`)) {
+        btn.disabled=false; btn.textContent='Save Result'; return;
+      }
+    }
+    btn.textContent='Saving...';
     await db.collection('results').add({
       gameType, winner, participants,
       playedAt: new Date(gameDate+'T12:00:00'),
@@ -826,6 +880,50 @@ async function populateMyStats() {
   document.getElementById('myRank').textContent='#'+rank;
   const rSnap=await db.collection('results').get();
   const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name)) mine.push(r); }); mine.sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
+  // Draw progression chart
+  let chartPoints = 0;
+  const chartLabels = [];
+  const chartData = [];
+  const ptsSnap2 = await db.collection('config').doc('points').get();
+  const ptsData2 = ptsSnap2.exists ? ptsSnap2.data() : { winner: 3, participant: 1, streak: 1 };
+  [...mine].reverse().forEach(r => {
+    const won = r.winner === name;
+    chartPoints += won ? ptsData2.winner : ptsData2.participant;
+    const d = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
+    chartLabels.push(d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
+    chartData.push(chartPoints);
+  });
+  const ctx = document.getElementById('progressChart');
+  if (ctx) {
+    if (window._progressChart) window._progressChart.destroy();
+    window._progressChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Points',
+          data: chartData,
+          borderColor: '#6c63ff',
+          backgroundColor: 'rgba(108,99,255,0.1)',
+          borderWidth: 2,
+          pointBackgroundColor: '#6c63ff',
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#6b6e80', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#6b6e80', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
   document.getElementById('myHistory').innerHTML=mine.slice(0,8).map(r=>{
     const d=r.playedAt?.toDate?r.playedAt.toDate():r.playedAt?.seconds?new Date(r.playedAt.seconds*1000):new Date(r.playedAt);
     const won=r.winner===name;
@@ -839,6 +937,17 @@ async function populateMyStats() {
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
+function toggleMobileNav() {
+  const tabs = document.querySelector('.nav-tabs');
+  tabs.classList.toggle('mobile-open');
+}
+// Close mobile nav when a tab is clicked
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('nav-tab')) {
+    document.querySelector('.nav-tabs').classList.remove('mobile-open');
+  }
+});
+
 function logout() {
   localStorage.removeItem('ssl_user');
   currentUser = null;
@@ -859,7 +968,32 @@ function adjustPts(key,delta) {
   document.getElementById('prev-participant').textContent=pts.participant+' pt'+(pts.participant!==1?'s':'');
   document.getElementById('prev-streak').textContent='+'+pts.streak+' pt'+(pts.streak!==1?'s':'');
 }
-function savePoints() { showToast('✅ Point rules saved!'); }
+async function savePoints() {
+  try {
+    await db.collection('config').doc('points').set({
+      winner: pts.winner,
+      participant: pts.participant,
+      streak: pts.streak
+    });
+    showToast('✅ Point rules saved to Firestore!');
+  } catch(e) { showToast('Error saving points', true); console.error(e); }
+}
+
+async function loadPoints() {
+  try {
+    const snap = await db.collection('config').doc('points').get();
+    if (snap.exists) {
+      const d = snap.data();
+      pts.winner = d.winner ?? 3;
+      pts.participant = d.participant ?? 1;
+      pts.streak = d.streak ?? 1;
+      document.getElementById('pts-winner').textContent = pts.winner;
+      document.getElementById('pts-participant').textContent = pts.participant;
+      document.getElementById('pts-streak').textContent = pts.streak;
+      adjustPts('winner', 0); // refresh previews
+    }
+  } catch(e) { console.error('Error loading points', e); }
+}
 function togglePwVis(btn) {
   const input=btn.previousElementSibling;
   input.type=input.type==='password'?'text':'password';
@@ -897,7 +1031,7 @@ function loadAdminResults() {
         <td>
           <div style="display:flex;gap:6px">
             <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
-            <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}','${r.winner}',${JSON.stringify(r.participants||[])})">✕ Delete</button>
+            <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
           </div>
         </td>
       </tr>`);
@@ -950,13 +1084,140 @@ async function saveEditResult() {
   btn.disabled = false; btn.textContent = 'Save Changes';
 }
 
-async function deleteResult(id, winner, participants) {
-  if (!confirm('Delete this result? This will NOT automatically adjust player stats.')) return;
+async function deleteResult(id) {
+  if (!confirm('Delete this result? Player stats will be recalculated automatically.')) return;
   try {
     await db.collection('results').doc(id).delete();
-    showToast('🗑 Result deleted');
+    await recalculateAllStats();
+    showToast('🗑 Result deleted & stats recalculated');
     loadAdminResults();
   } catch(e) { showToast('Error deleting result', true); console.error(e); }
+}
+
+async function recalculateAllStats() {
+  // Reset all players
+  const playerSnap = await db.collection('players').get();
+  const batch = db.batch();
+  playerSnap.forEach(d => {
+    batch.update(d.ref, { wins: 0, points: 0, streak: 0, gamesPlayed: 0 });
+  });
+  await batch.commit();
+
+  // Replay all results in chronological order
+  const resultsSnap = await db.collection('results').get();
+  const results = [];
+  resultsSnap.forEach(d => results.push(d.data()));
+  results.sort((a, b) => {
+    const at = a.playedAt?.seconds || 0, bt = b.playedAt?.seconds || 0;
+    return at - bt;
+  });
+
+  // Load current pts config
+  const ptsSnap = await db.collection('config').doc('points').get();
+  const ptsData = ptsSnap.exists ? ptsSnap.data() : { winner: 3, participant: 1, streak: 1 };
+
+  // Track streaks per player during replay
+  const streaks = {};
+  for (const r of results) {
+    const winner = r.winner;
+    const participants = r.participants || [];
+    streaks[winner] = (streaks[winner] || 0) + 1;
+    const winnerRef = db.collection('players').doc(winner);
+    await winnerRef.update({
+      wins: firebase.firestore.FieldValue.increment(1),
+      points: firebase.firestore.FieldValue.increment(ptsData.winner + ptsData.streak),
+      streak: streaks[winner],
+      gamesPlayed: firebase.firestore.FieldValue.increment(1)
+    });
+    for (const p of participants.filter(p => p !== winner)) {
+      streaks[p] = 0;
+      await db.collection('players').doc(p).update({
+        points: firebase.firestore.FieldValue.increment(ptsData.participant),
+        streak: 0,
+        gamesPlayed: firebase.firestore.FieldValue.increment(1)
+      });
+    }
+  }
+}
+
+// ── WEEKLY VIEW ──────────────────────────────────────────────
+let weekOffset = 0;
+
+function getWeekRange(offset) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon...
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { start: monday, end: sunday };
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  document.getElementById('nextWeekBtn').style.opacity = weekOffset >= 0 ? '0.4' : '1';
+  document.getElementById('nextWeekBtn').style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+  loadWeekly();
+}
+
+async function loadWeekly() {
+  const container = document.getElementById('weeklyLeaderboard');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+  const { start, end } = getWeekRange(weekOffset);
+  const label = weekOffset === 0 ? 'This week' : weekOffset === -1 ? 'Last week' :
+    `Week of ${start.toLocaleDateString('en-GB', {day:'2-digit',month:'short'})}`;
+  document.getElementById('weekLabel').textContent =
+    label + ' · ' + start.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) +
+    ' – ' + end.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  document.getElementById('nextWeekBtn').style.opacity = weekOffset >= 0 ? '0.4' : '1';
+  document.getElementById('nextWeekBtn').style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+
+  const snap = await db.collection('results').get();
+  const results = [];
+  snap.forEach(d => results.push(d.data()));
+  const weekResults = results.filter(r => {
+    const d = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
+    return d >= start && d <= end;
+  });
+
+  if (!weekResults.length) {
+    container.innerHTML = '<div class="empty-state">No games played this week yet 🏖</div>';
+    return;
+  }
+
+  // Build weekly stats per player
+  const stats = {};
+  const ptsSnap = await db.collection('config').doc('points').get();
+  const ptsData = ptsSnap.exists ? ptsSnap.data() : { winner: 3, participant: 1, streak: 1 };
+  weekResults.forEach(r => {
+    (r.participants||[]).forEach(p => {
+      if (!stats[p]) stats[p] = { wins: 0, points: 0, games: 0 };
+      stats[p].games++;
+      if (p === r.winner) { stats[p].wins++; stats[p].points += ptsData.winner; }
+      else { stats[p].points += ptsData.participant; }
+    });
+  });
+
+  const sorted = Object.entries(stats).sort((a,b) => b[1].points - a[1].points);
+  const rankEmoji = ['🥇','🥈','🥉'];
+  container.innerHTML = `
+    <div class="col-header"><div>#</div><div>Player</div><div class="col-right">Games</div><div class="col-right">Wins</div><div class="col-right">Points</div></div>
+    ${sorted.map(([name, s], i) => {
+      const cfg = PLAYER_CONFIG[name] || {};
+      const rank = i < 3 ? rankEmoji[i] : (i+1);
+      const rankCls = i < 3 ? ['rank-1','rank-2','rank-3'][i] : 'rank-n';
+      const topCls = i < 3 ? ['top1','top2','top3'][i] : '';
+      return `<div class="player-row ${topCls}" onclick="openProfile('${name}')">
+        <div class="rank ${rankCls}">${rank}</div>
+        <div class="pident"><div class="av" style="background:${cfg.color||'var(--accent)'}">${cfg.init||name.slice(0,2)}</div>
+          <div><div class="pname">${name}</div><div class="prole">${cfg.role||''}</div></div></div>
+        <div style="text-align:right;color:var(--muted);font-size:14px">${s.games}</div>
+        <div class="wins">${s.wins}</div>
+        <div class="pts-col">${s.points} pts</div>
+      </div>`;
+    }).join('')}`;
 }
 
 // ── GAME TYPES ───────────────────────────────────────────────
@@ -1066,6 +1327,7 @@ seedPlayersIfNeeded().catch(console.error);
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
+    loadPoints();
   } catch(e) { console.error('Auto-login failed', e); }
 })();
 </script>
@@ -1096,7 +1358,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.5</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
