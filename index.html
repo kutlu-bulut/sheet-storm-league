@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.1</span></div>
   </div>
 </div>
 
@@ -325,6 +325,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPage('leaderboard',this)">Leaderboard</button>
       <button class="nav-tab" onclick="showPage('weekly',this);loadWeekly()">Weekly</button>
+      <button class="nav-tab" onclick="showPage('log',this);loadLog()">Log</button>
       <button class="nav-tab" onclick="showPage('games',this)">Games</button>
       <button class="nav-tab" onclick="showPage('mystats',this)">My Stats</button>
       <button class="nav-tab" id="adminTab" onclick="showPage('admin',this)" style="display:none">⚙ Admin</button>
@@ -350,6 +351,17 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="section-title">All-time standings</div>
     <div class="col-header"><div>#</div><div>Player</div><div>Streak</div><div class="col-right">Wins</div><div class="col-right">Points</div></div>
     <div id="leaderboardRows"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="page" id="page-log">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px">Activity Log</h2>
+        <p style="font-size:13px;color:var(--muted)">Everything that has happened from the beginning</p>
+      </div>
+    </div>
+    <div id="logFeed"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
 
   <!-- WEEKLY -->
@@ -802,6 +814,7 @@ async function submitResult() {
     }
     closeModal(); launchConfetti(); deselectAllPlayers();
     showToast('🎉 ' + winner + ' wins the ' + gameType + ' game!');
+    writeLog('result_added', winner + ' won ' + gameType + ' ('+participants.join(', ')+')' );
   } catch(e) { showToast('Error saving result', true); console.error(e); }
   btn.disabled=false; btn.textContent='Save Result';
 }
@@ -981,6 +994,7 @@ async function savePoints() {
       streak: pts.streak
     });
     showToast('✅ Point rules saved to Firestore!');
+    writeLog('points_changed', 'Point rules updated — Winner: '+pts.winner+' pts, Participant: '+pts.participant+' pts, Streak: +'+pts.streak+' pts');
   } catch(e) { showToast('Error saving points', true); console.error(e); }
 }
 
@@ -1015,6 +1029,7 @@ async function savePasswords() {
     if(name&&pw) { try { await db.collection('players').doc(name).update({password:pw}); saved++; } catch(e) { console.error('Failed for '+name, e); } }
   }
   showToast('✅ Passwords saved for '+saved+' players!');
+  writeLog('password_saved', 'Passwords updated for ' + saved + ' players');
 }
 
 // ── ADMIN RESULTS ────────────────────────────────────────────
@@ -1086,6 +1101,7 @@ async function saveEditResult() {
     closeEditModal();
     showToast('✅ Result updated!');
     loadAdminResults();
+    writeLog('result_edited', 'Result updated: ' + gameType + ' on ' + date + ', winner: ' + winner);
   } catch(e) { showToast('Error updating result', true); console.error(e); }
   btn.disabled = false; btn.textContent = 'Save Changes';
 }
@@ -1097,6 +1113,8 @@ async function deleteResult(id) {
     await recalculateAllStats();
     showToast('🗑 Result deleted & stats recalculated');
     loadAdminResults();
+    writeLog('result_deleted', 'A result was deleted');
+    writeLog('stats_recalc', 'All player stats were recalculated from scratch');
   } catch(e) { showToast('Error deleting result', true); console.error(e); }
 }
 
@@ -1143,6 +1161,80 @@ async function recalculateAllStats() {
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
       });
     }
+  }
+}
+
+// ── ACTIVITY LOG ─────────────────────────────────────────────
+const LOG_ICONS = {
+  result_added:    '🏆',
+  result_edited:   '✏️',
+  result_deleted:  '🗑',
+  points_changed:  '⚙️',
+  gametype_added:  '🎮',
+  gametype_edited: '🎮',
+  gametype_deleted:'🎮',
+  password_saved:  '🔑',
+  stats_recalc:    '🔄',
+};
+
+async function writeLog(type, message) {
+  try {
+    await db.collection('logs').add({
+      type,
+      message,
+      by: currentUser?.name || 'System',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.error('Log write failed:', e); }
+}
+
+async function loadLog() {
+  const container = document.getElementById('logFeed');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+  try {
+    const snap = await db.collection('logs').orderBy('createdAt','desc').limit(200).get();
+    if (snap.empty) {
+      container.innerHTML = '<div class="empty-state">No activity yet — start playing! 🎮</div>';
+      return;
+    }
+
+    // Group by date
+    const groups = {};
+    snap.forEach(d => {
+      const data = d.data();
+      const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+      const dateKey = date.toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push({ ...data, _date: date });
+    });
+
+    container.innerHTML = Object.entries(groups).map(([dateLabel, entries]) => `
+      <div style="margin-bottom:28px">
+        <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px">
+          <span>${dateLabel}</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${entries.map(e => {
+            const icon = LOG_ICONS[e.type] || '📋';
+            const time = e._date.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+            const cfg = PLAYER_CONFIG[e.by] || {};
+            const avColor = cfg.color || 'var(--accent)';
+            const avInit = cfg.init || (e.by||'?').slice(0,2);
+            return `<div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
+              <div style="width:32px;height:32px;border-radius:50%;background:${avColor};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;flex-shrink:0">${avInit}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:500">${icon} ${e.message}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.by} · ${time}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`
+    ).join('');
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state">Error loading log</div>';
+    console.error(e);
   }
 }
 
@@ -1270,6 +1362,7 @@ async function saveGameType(i) {
   types[i] = { emoji: emoji || '🎮', name };
   await db.collection('config').doc('gameTypes').set({ types });
   showToast('✅ Game type updated!');
+  writeLog('gametype_edited', 'Game type updated: ' + (emoji||'🎮') + ' ' + name);
   renderGameTypesList(types);
 }
 
@@ -1279,6 +1372,7 @@ async function deleteGameType(i) {
   types.splice(i, 1);
   await db.collection('config').doc('gameTypes').set({ types });
   showToast('🗑 Game type deleted');
+  writeLog('gametype_deleted', 'A game type was deleted');
   renderGameTypesList(types);
 }
 
@@ -1292,6 +1386,7 @@ async function addGameType() {
   document.getElementById('newGameEmoji').value = '';
   document.getElementById('newGameName').value = '';
   showToast('✅ ' + name + ' added!');
+  writeLog('gametype_added', 'Game type added: ' + emoji + ' ' + name);
   renderGameTypesList(types);
 }
 
@@ -1364,7 +1459,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
