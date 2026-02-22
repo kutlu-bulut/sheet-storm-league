@@ -240,7 +240,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.4</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v1.5</span></div>
   </div>
 </div>
 
@@ -252,16 +252,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="modal-sub">Log who played and who won</div>
     <div class="form-row">
       <label class="form-label">Game type</label>
-      <select class="form-sel" id="gameType" onchange="handleGameTypeChange(this)">
-        <option>🎯 Kahoot</option><option>🔤 Hangman</option><option>🧩 Puzzle</option>
-        <option value="other">🃏 Other</option>
+      <select class="form-sel" id="gameType">
+        <option>Loading...</option>
       </select>
-      <div id="customGameWrap" style="display:none;margin-top:10px">
-        <div style="display:flex;gap:8px">
-          <input class="form-inp" type="text" id="customGameName" placeholder="Game name..." style="padding:10px 14px">
-          <button class="btn" style="white-space:nowrap" onclick="addCustomGame()">Add</button>
-        </div>
-      </div>
     </div>
     <div class="form-row">
       <label class="form-label">Date</label>
@@ -388,6 +381,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
       <button class="admin-sub-tab" id="atab-points" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--accent);color:#fff;" onclick="showAdminTab('points',this)">Points</button>
       <button class="admin-sub-tab" id="atab-players" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('players',this)">Players</button>
       <button class="admin-sub-tab" id="atab-results" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('results',this)">Results</button>
+      <button class="admin-sub-tab" id="atab-gametypes" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('gametypes',this)">Game Types</button>
     </div>
 
     <div class="admin-tab active" id="admintab-points">
@@ -429,6 +423,19 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="admin-title">📋 All Results</div>
         <div class="admin-sub">Edit or delete any recorded game result.</div>
         <div id="adminResultsList"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
+      </div>
+    </div>
+
+    <div class="admin-tab" id="admintab-gametypes">
+      <div class="admin-card" style="max-width:520px">
+        <div class="admin-title">🎮 Game Types</div>
+        <div class="admin-sub">Manage the games available in the "Add Result" dropdown.</div>
+        <div id="gameTypesList"></div>
+        <div style="margin-top:20px;display:flex;gap:10px;align-items:center">
+          <input class="form-inp" type="text" id="newGameEmoji" placeholder="🎯" style="width:60px;padding:10px;text-align:center">
+          <input class="form-inp" type="text" id="newGameName" placeholder="Game name e.g. Skribbl" style="flex:1">
+          <button class="btn" onclick="addGameType()">Add</button>
+        </div>
       </div>
     </div>
 
@@ -519,6 +526,7 @@ async function doLogin() {
     document.getElementById('userBadgeName').textContent = selectedLogin;
     loadLeaderboard();
     loadRecentGames();
+    initGameTypeDropdown();
   } catch(e) {
     err.textContent = 'Connection error — check internet';
     console.error(e);
@@ -545,6 +553,7 @@ function showAdminTab(name, btn) {
   btn.style.background = 'var(--accent)'; btn.style.color = '#fff';
   if (name === 'results') loadAdminResults();
   if (name === 'players') loadPlayersTable();
+  if (name === 'gametypes') loadGameTypes();
 }
 
 async function loadPlayersTable() {
@@ -738,13 +747,7 @@ async function submitResult() {
   btn.disabled=false; btn.textContent='Save Result';
 }
 
-function handleGameTypeChange(sel) { document.getElementById('customGameWrap').style.display = sel.value==='other'?'block':'none'; }
-function addCustomGame() {
-  const input = document.getElementById('customGameName'), name=input.value.trim(); if(!name)return;
-  const val='🎮 '+name, sel=document.getElementById('gameType');
-  sel.insertBefore(new Option(val,val), Array.from(sel.options).find(o=>o.value==='other'));
-  sel.value=val; document.getElementById('customGameWrap').style.display='none'; input.value='';
-}
+// handleGameTypeChange and addCustomGame removed — game types now managed in Admin
 
 // ── CONFETTI ──────────────────────────────────────────────────
 function launchConfetti() {
@@ -956,6 +959,89 @@ async function deleteResult(id, winner, participants) {
   } catch(e) { showToast('Error deleting result', true); console.error(e); }
 }
 
+// ── GAME TYPES ───────────────────────────────────────────────
+const DEFAULT_GAME_TYPES = [
+  { emoji: '🎯', name: 'Kahoot' },
+  { emoji: '🔤', name: 'Hangman' },
+  { emoji: '🧩', name: 'Puzzle' },
+];
+
+async function getGameTypes() {
+  const snap = await db.collection('config').doc('gameTypes').get();
+  if (snap.exists && snap.data().types?.length) return snap.data().types;
+  // Seed defaults if not set
+  await db.collection('config').doc('gameTypes').set({ types: DEFAULT_GAME_TYPES });
+  return DEFAULT_GAME_TYPES;
+}
+
+async function loadGameTypes() {
+  const container = document.getElementById('gameTypesList');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  const types = await getGameTypes();
+  renderGameTypesList(types);
+}
+
+function renderGameTypesList(types) {
+  const container = document.getElementById('gameTypesList');
+  if (!types.length) { container.innerHTML = '<div class="empty-state">No game types yet</div>'; return; }
+  container.innerHTML = types.map((t, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)" id="gt-row-${i}">
+      <input type="text" value="${t.emoji}" style="width:48px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px;text-align:center;font-size:18px;outline:none" data-gt-emoji="${i}">
+      <input type="text" value="${t.name}" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:14px;outline:none;font-family:'DM Sans',sans-serif" data-gt-name="${i}">
+      <button class="btn sm" onclick="saveGameType(${i})">Save</button>
+      <button class="icon-btn" onclick="deleteGameType(${i})" title="Delete">✕</button>
+    </div>`).join('');
+  // Also refresh the dropdown in Add Result modal
+  refreshGameTypeDropdown(types);
+}
+
+async function saveGameType(i) {
+  const emoji = document.querySelector(`[data-gt-emoji="${i}"]`).value.trim();
+  const name = document.querySelector(`[data-gt-name="${i}"]`).value.trim();
+  if (!name) { showToast('Game name cannot be empty', true); return; }
+  const types = await getGameTypes();
+  types[i] = { emoji: emoji || '🎮', name };
+  await db.collection('config').doc('gameTypes').set({ types });
+  showToast('✅ Game type updated!');
+  renderGameTypesList(types);
+}
+
+async function deleteGameType(i) {
+  if (!confirm('Delete this game type?')) return;
+  const types = await getGameTypes();
+  types.splice(i, 1);
+  await db.collection('config').doc('gameTypes').set({ types });
+  showToast('🗑 Game type deleted');
+  renderGameTypesList(types);
+}
+
+async function addGameType() {
+  const emoji = document.getElementById('newGameEmoji').value.trim();
+  const name = document.getElementById('newGameName').value.trim();
+  if (!name) { showToast('Please enter a game name', true); return; }
+  const types = await getGameTypes();
+  types.push({ emoji: emoji || '🎮', name });
+  await db.collection('config').doc('gameTypes').set({ types });
+  document.getElementById('newGameEmoji').value = '';
+  document.getElementById('newGameName').value = '';
+  showToast('✅ ' + name + ' added!');
+  renderGameTypesList(types);
+}
+
+function refreshGameTypeDropdown(types) {
+  const sel = document.getElementById('gameType');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = types.map(t => `<option value="${t.emoji} ${t.name}">${t.emoji} ${t.name}</option>`).join('');
+  // Try to restore selection
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+async function initGameTypeDropdown() {
+  const types = await getGameTypes();
+  refreshGameTypeDropdown(types);
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 seedPlayersIfNeeded().catch(console.error);
 
@@ -979,6 +1065,7 @@ seedPlayersIfNeeded().catch(console.error);
     document.getElementById('userBadgeName').textContent = saved;
     loadLeaderboard();
     loadRecentGames();
+    initGameTypeDropdown();
   } catch(e) { console.error('Auto-login failed', e); }
 })();
 </script>
@@ -1009,7 +1096,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.4</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v1.5</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
