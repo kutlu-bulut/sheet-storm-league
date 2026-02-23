@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.1</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.2</span></div>
   </div>
 </div>
 
@@ -281,7 +281,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <button class="btn sec sm" onclick="deselectAllPlayers()">Clear</button>
       </div>
       <div class="chips-grid"><div class="chip" data-name="Andreea" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Andreea</div><div class="chip" data-name="Kutlu" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Kutlu</div><div class="chip" data-name="Linn" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Linn</div><div class="chip" data-name="Ludvig" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Ludvig</div><div class="chip" data-name="Nicolay" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Nicolay</div><div class="chip" data-name="Robert" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Robert</div><div class="chip" data-name="Teddy" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Teddy</div><div class="chip" data-name="Xin" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Xin</div></div>
-      <div class="winner-note" id="winnerNote">Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong></div>
+      <div class="winner-note" id="winnerNote">Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong> · Tap once more to remove</div>
     </div>
     <div class="form-row">
       <label class="form-label">Points preview</label>
@@ -718,7 +718,7 @@ function loadRecentGames() {
       return `<div class="recent-game">
         <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
         <div class="gpill">${r.gameType}</div>
-        <div class="gwinner">${r.winner} wins</div>
+        <div class="gwinner">${(r.winners||[r.winner]).join(' & ')} wins</div>
       </div>`;
     }).join('');
 
@@ -754,22 +754,28 @@ function deselectAllPlayers() {
   document.querySelectorAll('.chip[data-name]').forEach(el => {
     chipState[el.dataset.name]=0; el.classList.remove('sel','won'); el.querySelector('.chip-icon').textContent='👤';
   });
-  document.getElementById('winnerNote').innerHTML = 'Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong>';
+  document.getElementById('winnerNote').innerHTML = 'Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong> · Tap once more to remove';
 }
 function togglePlayer(el) {
   const name = el.dataset.name, state = chipState[name]||0;
   if (state===0) { chipState[name]=1; el.classList.add('sel'); el.classList.remove('won'); el.querySelector('.chip-icon').textContent='✓'; }
   else if (state===1) {
-    document.querySelectorAll('.chip.won').forEach(c => { c.classList.remove('won'); c.classList.add('sel'); c.querySelector('.chip-icon').textContent='✓'; chipState[c.dataset.name]=1; });
     chipState[name]=2; el.classList.add('sel','won'); el.querySelector('.chip-icon').textContent='🏆';
-    document.getElementById('winnerNote').innerHTML = `<strong style="color:var(--accent3)">🏆 ${name} is the winner!</strong>`;
   } else { chipState[name]=0; el.classList.remove('sel','won'); el.querySelector('.chip-icon').textContent='👤'; }
+  // Update winner note
+  const winners = Object.keys(chipState).filter(k => chipState[k]===2);
+  const noteEl = document.getElementById('winnerNote');
+  if (winners.length === 0) {
+    noteEl.innerHTML = 'Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong> · Tap once more to remove';
+  } else {
+    noteEl.innerHTML = `<strong style="color:var(--accent3)">🏆 Winners: ${winners.join(', ')}</strong>`;
+  }
 }
 
 // ── SUBMIT RESULT ─────────────────────────────────────────────
 async function submitResult() {
-  const winner = Object.keys(chipState).find(k => chipState[k]===2);
-  if (!winner) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select a winner (tap twice)</span>'; return; }
+  const winners = Object.keys(chipState).filter(k => chipState[k]===2);
+  if (!winners.length) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select at least one winner (tap twice)</span>'; return; }
   const participants = Object.keys(chipState).filter(k => chipState[k]>0);
   if (participants.length < 2) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select at least 2 players</span>'; return; }
   const btn = document.querySelector('.form-submit');
@@ -794,27 +800,30 @@ async function submitResult() {
     }
     btn.textContent='Saving...';
     await db.collection('results').add({
-      gameType, winner, participants,
+      gameType, winners, winner: winners[0], participants,
       playedAt: new Date(gameDate+'T12:00:00'),
       submittedBy: currentUser.name,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await db.collection('players').doc(winner).update({
-      wins: firebase.firestore.FieldValue.increment(1),
-      points: firebase.firestore.FieldValue.increment(pts.winner + pts.streak),
-      streak: firebase.firestore.FieldValue.increment(1),
-      gamesPlayed: firebase.firestore.FieldValue.increment(1)
-    });
-    for (const p of participants.filter(p=>p!==winner)) {
+    for (const w of winners) {
+      await db.collection('players').doc(w).update({
+        wins: firebase.firestore.FieldValue.increment(1),
+        points: firebase.firestore.FieldValue.increment(pts.winner + pts.streak),
+        streak: firebase.firestore.FieldValue.increment(1),
+        gamesPlayed: firebase.firestore.FieldValue.increment(1)
+      });
+    }
+    for (const p of participants.filter(p=>!winners.includes(p))) {
       await db.collection('players').doc(p).update({
         points: firebase.firestore.FieldValue.increment(pts.participant),
-        streak: 0,  // reset streak on loss
+        streak: 0,
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
       });
     }
     closeModal(); launchConfetti(); deselectAllPlayers();
-    showToast('🎉 ' + winner + ' wins the ' + gameType + ' game!');
-    writeLog('result_added', winner + ' won ' + gameType + ' ('+participants.join(', ')+')' );
+    const winnerLabel = winners.length > 1 ? winners.join(' & ') + ' win' : winners[0] + ' wins';
+    showToast('🎉 ' + winnerLabel + ' the ' + gameType + ' game!');
+    writeLog('result_added', (winners.length>1?winners.join(' & ')+' won':winners[0]+' won')+' '+gameType+' ('+participants.join(', ')+')' );
   } catch(e) { showToast('Error saving result', true); console.error(e); }
   btn.disabled=false; btn.textContent='Save Result';
 }
@@ -1046,11 +1055,11 @@ function loadAdminResults() {
       rows.push(`<tr>
         <td style="font-size:13px;color:var(--muted)">${dateStr}</td>
         <td style="font-size:13px">${r.gameType}</td>
-        <td style="font-size:13px;font-weight:600">🏆 ${r.winner}</td>
+        <td style="font-size:13px;font-weight:600">🏆 ${(r.winners||[r.winner]).join(', ')}</td>
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
+            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${(r.winners||[r.winner]).join('|')}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
             <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
           </div>
         </td>
@@ -1069,13 +1078,23 @@ function loadAdminResults() {
   }).catch(e => { container.innerHTML = '<div class="empty-state">Error loading results</div>'; console.error(e); });
 }
 
-function openEditModal(id, gameType, winner, date) {
+function openEditModal(id, gameType, winnersStr, date) {
   document.getElementById('editResultId').value = id;
   document.getElementById('editGameType').value = gameType;
-  document.getElementById('editWinner').value = winner;
   document.getElementById('editDate').value = date;
+  // Reset winner chips
+  const editWinners = winnersStr ? winnersStr.split('|') : [];
+  document.querySelectorAll('[data-ew]').forEach(el => {
+    const sel = editWinners.includes(el.dataset.ew);
+    el.classList.toggle('won', sel);
+    el.querySelector('.chip-icon').textContent = sel ? '🏆' : '👤';
+  });
   document.getElementById('editResultModal').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+function toggleEditWinner(el) {
+  el.classList.toggle('won');
+  el.querySelector('.chip-icon').textContent = el.classList.contains('won') ? '🏆' : '👤';
 }
 function closeEditModal() {
   document.getElementById('editResultModal').classList.remove('open');
@@ -1087,21 +1106,23 @@ document.addEventListener('click', e => { const m = document.getElementById('edi
 async function saveEditResult() {
   const id = document.getElementById('editResultId').value;
   const gameType = document.getElementById('editGameType').value.trim();
-  const winner = document.getElementById('editWinner').value;
   const date = document.getElementById('editDate').value;
-  if (!gameType || !winner || !date) { showToast('Please fill in all fields', true); return; }
+  const winners = [...document.querySelectorAll('[data-ew].won')].map(el => el.dataset.ew);
+  if (!gameType || !date) { showToast('Please fill in all fields', true); return; }
+  if (!winners.length) { showToast('Select at least one winner', true); return; }
   const btn = document.querySelector('#editResultModal .form-submit');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     await db.collection('results').doc(id).update({
       gameType,
-      winner,
+      winners,
+      winner: winners[0],
       playedAt: new Date(date + 'T12:00:00')
     });
     closeEditModal();
     showToast('✅ Result updated!');
     loadAdminResults();
-    writeLog('result_edited', 'Result updated: ' + gameType + ' on ' + date + ', winner: ' + winner);
+    writeLog('result_edited', 'Result updated: ' + gameType + ' on ' + date + ', winners: ' + winners.join(', '));
   } catch(e) { showToast('Error updating result', true); console.error(e); }
   btn.disabled = false; btn.textContent = 'Save Changes';
 }
@@ -1143,17 +1164,18 @@ async function recalculateAllStats() {
   // Track streaks per player during replay
   const streaks = {};
   for (const r of results) {
-    const winner = r.winner;
+    const winners = r.winners || (r.winner ? [r.winner] : []);
     const participants = r.participants || [];
-    streaks[winner] = (streaks[winner] || 0) + 1;
-    const winnerRef = db.collection('players').doc(winner);
-    await winnerRef.update({
-      wins: firebase.firestore.FieldValue.increment(1),
-      points: firebase.firestore.FieldValue.increment(ptsData.winner + ptsData.streak),
-      streak: streaks[winner],
-      gamesPlayed: firebase.firestore.FieldValue.increment(1)
-    });
-    for (const p of participants.filter(p => p !== winner)) {
+    for (const w of winners) {
+      streaks[w] = (streaks[w] || 0) + 1;
+      await db.collection('players').doc(w).update({
+        wins: firebase.firestore.FieldValue.increment(1),
+        points: firebase.firestore.FieldValue.increment(ptsData.winner + ptsData.streak),
+        streak: streaks[w],
+        gamesPlayed: firebase.firestore.FieldValue.increment(1)
+      });
+    }
+    for (const p of participants.filter(p => !winners.includes(p))) {
       streaks[p] = 0;
       await db.collection('players').doc(p).update({
         points: firebase.firestore.FieldValue.increment(ptsData.participant),
@@ -1445,10 +1467,10 @@ seedPlayersIfNeeded().catch(console.error);
       <input class="form-inp" type="text" id="editGameType">
     </div>
     <div class="form-row">
-      <label class="form-label">Winner</label>
-      <select class="form-sel" id="editWinner">
-        <option>Andreea</option><option>Kutlu</option><option>Linn</option><option>Ludvig</option><option>Nicolay</option><option>Robert</option><option>Teddy</option><option>Xin</option>
-      </select>
+      <label class="form-label">Winners (select one or more)</label>
+      <div id="editWinnerChips" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div class="chip" data-ew="Andreea" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Andreea</div><div class="chip" data-ew="Kutlu" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Kutlu</div><div class="chip" data-ew="Linn" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Linn</div><div class="chip" data-ew="Ludvig" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Ludvig</div><div class="chip" data-ew="Nicolay" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Nicolay</div><div class="chip" data-ew="Robert" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Robert</div><div class="chip" data-ew="Teddy" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Teddy</div><div class="chip" data-ew="Xin" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Xin</div>
+      </div>
     </div>
     <div class="form-row">
       <label class="form-label">Date</label>
@@ -1459,7 +1481,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
