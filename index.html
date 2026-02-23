@@ -555,6 +555,7 @@ const ADMINS = ['Kutlu'];
 let currentUser = null;
 let selectedLogin = null;
 let currentSeason = null; // { id, name, year, status, pointRules }
+let legacySeasonId = null; // ID of the oldest season — legacy results belong here
 const chipState = {};
 let pts = { winner:3, participant:1, streak:1 };
 const DEFAULT_GAME_TYPES = [
@@ -613,6 +614,7 @@ async function doLogin() {
     av.textContent = data.init || selectedLogin.slice(0,2);
     document.getElementById('userBadgeName').textContent = selectedLogin;
     await initSeason();
+    await loadCurrentSeason();
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
@@ -758,10 +760,14 @@ function loadLeaderboard() {
 
 // ── RECENT GAMES ──────────────────────────────────────────────
 function loadRecentGames() {
-  const q = currentSeason ? db.collection('results').where('seasonId','==',currentSeason.id) : db.collection('results');
-  q.onSnapshot(snapshot => {
+  db.collection('results').onSnapshot(snapshot => {
     const results = [];
-    snapshot.forEach(d => { const r = d.data(); if(r.seasonId===currentSeason?.id) results.push({ id: d.id, ...r }); });
+    snapshot.forEach(d => {
+      const r = d.data();
+      // Include if: matches current season, OR legacy result belonging to oldest season
+      const rSeason = r.seasonId || legacySeasonId;
+      if (!currentSeason || rSeason === currentSeason.id) results.push({ id: d.id, ...r });
+    });
     const rg = document.getElementById('recentGames');
     if (!results.length) { rg.innerHTML = '<div class="empty-state">No games yet!</div>'; return; }
     rg.innerHTML = results.slice(0,8).map(r => {
@@ -968,7 +974,7 @@ async function populateMyStats() {
   document.getElementById('myPts').textContent=p.points||0;
   document.getElementById('myGames').textContent=p.gamesPlayed||0;
   document.getElementById('myStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
-  const allSnap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').orderBy('points','desc').get();
+  const allSnap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').get();
   let rank=1; allSnap.forEach(d=>{ if(d.id!==name&&(d.data().points||0)>(p.points||0)) rank++; });
   document.getElementById('myRank').textContent='#'+rank;
   const rSnap=await db.collection('results').get();
@@ -1126,7 +1132,7 @@ function loadAdminResults() {
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            ${r.seasonId === currentSeason?.id ? `<button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${(r.winners||[r.winner]).join('|')}','${date.toISOString().split('T')[0]}')">✏ Edit</button><button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>` : '<span style="font-size:11px;color:var(--muted)">🔒 Locked</span>'}
+            ${((r.seasonId || legacySeasonId) === currentSeason?.id) ? `<button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${(r.winners||[r.winner]).join('|')}','${date.toISOString().split('T')[0]}')">✏ Edit</button><button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>` : '<span style="font-size:11px;color:var(--muted)">🔒 Locked</span>'}
           </div>
         </td>
       </tr>`);
@@ -1430,12 +1436,15 @@ async function loadWeekly() {
   document.getElementById('nextWeekBtn').style.opacity = weekOffset >= 0 ? '0.4' : '1';
   document.getElementById('nextWeekBtn').style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
 
-  const snap = await db.collection('results').get();
+  const snap = await db.collection('results').get(); // fetch all, filter client-side
   const results = [];
   snap.forEach(d => results.push(d.data()));
   const weekResults = results.filter(r => {
     const d = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
-    return d >= start && d <= end;
+    const inWeek = d >= start && d <= end;
+    const rSeason = r.seasonId || legacySeasonId;
+    const inSeason = !currentSeason || rSeason === currentSeason.id;
+    return inWeek && inSeason;
   });
 
   if (!weekResults.length) {
@@ -1479,6 +1488,16 @@ async function loadWeekly() {
 // ── SEASONS ──────────────────────────────────────────────────
 async function loadCurrentSeason() {
   try {
+    // Find oldest season for legacy result assignment
+    const allSeasons = await db.collection('seasons').get();
+    if (!allSeasons.empty) {
+      let oldest = null, oldestTime = Infinity;
+      allSeasons.forEach(d => {
+        const t = d.data().startDate?.seconds || 0;
+        if (t < oldestTime) { oldestTime = t; oldest = d.id; }
+      });
+      legacySeasonId = oldest;
+    }
     const snap = await db.collection('seasons').where('status','==','active').limit(1).get();
     if (!snap.empty) {
       const d = snap.docs[0];
@@ -1756,7 +1775,7 @@ async function viewSeason(id, name) {
   // Switch leaderboard to show this closed season
   const snap = await db.collection('seasons').doc(id).get();
   const season = { id, ...snap.data() };
-  const statsSnap = await db.collection('seasons').doc(id).collection('playerStats').orderBy('points','desc').get();
+  const statsSnap = await db.collection('seasons').doc(id).collection('playerStats').get();
   const players = [];
   statsSnap.forEach(d => players.push({ id: d.id, ...d.data() }));
 
@@ -1814,6 +1833,7 @@ seedPlayersIfNeeded().catch(console.error);
     av.textContent = data.init || saved.slice(0,2);
     document.getElementById('userBadgeName').textContent = saved;
     await initSeason();
+    await loadCurrentSeason();
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
