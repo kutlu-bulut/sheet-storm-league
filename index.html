@@ -491,13 +491,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="admin-title">📅 Seasons</div>
         <div class="admin-sub">Each season has its own standings and point rules. Closing a season locks it permanently.</div>
         <div id="seasonsList" style="margin-bottom:24px"></div>
-        <div style="border-top:1px solid var(--border);padding-top:20px">
+        <div id="createSeasonSection" style="border-top:1px solid var(--border);padding-top:20px">
           <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted)">CREATE NEW SEASON</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <input class="form-inp" type="text" id="newSeasonName" placeholder="e.g. Season 2026" style="flex:1;min-width:160px">
+            <input class="form-inp" type="text" id="newSeasonName" placeholder="e.g. Season 2027" style="flex:1;min-width:160px">
             <button class="btn" onclick="createSeason()">Create Season</button>
           </div>
-          <p style="font-size:12px;color:var(--accent2);margin-top:8px">⚠ Creating a new season will archive the current active season first.</p>
+          <p style="font-size:12px;color:var(--accent2);margin-top:8px">⚠ Close the current season first before creating a new one.</p>
         </div>
       </div>
     </div>
@@ -687,12 +687,23 @@ function showToast(msg, isError) {
 
 // ── LEADERBOARD ───────────────────────────────────────────────
 function loadLeaderboard() {
-  if (!currentSeason) return;
-  db.collection('seasons').doc(currentSeason.id).collection('playerStats')
-    .orderBy('points','desc').onSnapshot(snapshot => {
-    const players = [];
-    snapshot.forEach(d => players.push({ id: d.id, ...d.data() }));
-    if (!players.length) { document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No games played this season yet!</div>'; return; }
+  if (!currentSeason) {
+    document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No active season. Ask an admin to create one! 📅</div>';
+    document.getElementById('champCard').innerHTML = '';
+    document.getElementById('shameCard').style.display = 'none';
+    return;
+  }
+  // Listen to season playerStats subcollection (no orderBy to avoid index requirement)
+  db.collection('seasons').doc(currentSeason.id).collection('playerStats').onSnapshot(async snapshot => {
+    const seasonStats = {};
+    snapshot.forEach(d => { seasonStats[d.id] = d.data(); });
+
+    // Always show all players, merge with PLAYER_CONFIG for colors/init/role
+    const players = Object.entries(PLAYER_CONFIG).map(([name, cfg]) => {
+      const s = seasonStats[name] || { wins:0, points:0, streak:0, gamesPlayed:0 };
+      return { id: name, name, ...cfg, ...s };
+    });
+    players.sort((a,b) => (b.points||0) - (a.points||0));
 
     const champ = players[0];
     const cc = champ.color || 'linear-gradient(135deg,#6c63ff,#a78bfa)';
@@ -743,6 +754,7 @@ function loadLeaderboard() {
     }).join('');
   });
 }
+
 
 // ── RECENT GAMES ──────────────────────────────────────────────
 function loadRecentGames() {
@@ -1241,7 +1253,8 @@ async function loadSeasonsAdmin() {
   const container = document.getElementById('seasonsList');
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   const snap = await db.collection('seasons').orderBy('startDate','desc').get();
-  if (snap.empty) { container.innerHTML = '<div class="empty-state">No seasons yet — create one below!</div>'; return; }
+  if (snap.empty) { container.innerHTML = '<div class="empty-state">No seasons yet — create one below!</div>';
+    document.getElementById('createSeasonSection').style.display = 'block'; return; }
   const rows = [];
   snap.forEach(d => {
     const s = d.data();
@@ -1260,6 +1273,9 @@ async function loadSeasonsAdmin() {
     </div>`);
   });
   container.innerHTML = rows.join('');
+  // Hide create section if there's already an active season
+  const hasActive = snap.docs.some(d => d.data().status === 'active');
+  document.getElementById('createSeasonSection').style.display = hasActive ? 'none' : 'block';
 }
 
 async function createSeason() {
