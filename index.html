@@ -758,7 +758,7 @@ function loadLeaderboard() {
 
 // ── RECENT GAMES ──────────────────────────────────────────────
 function loadRecentGames() {
-  const q = currentSeason ? db.collection('results').where('seasonId','==',currentSeason.id).orderBy('playedAt','desc') : db.collection('results').orderBy('playedAt','desc');
+  const q = currentSeason ? db.collection('results').where('seasonId','==',currentSeason.id) : db.collection('results');
   q.onSnapshot(snapshot => {
     const results = [];
     snapshot.forEach(d => { const r = d.data(); if(r.seasonId===currentSeason?.id) results.push({ id: d.id, ...r }); });
@@ -1110,11 +1110,13 @@ async function savePasswords() {
 function loadAdminResults() {
   const container = document.getElementById('adminResultsList');
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
-  db.collection('results').orderBy('createdAt','desc').get().then(snapshot => {
+  db.collection('results').get().then(snapshot => {
     if (snapshot.empty) { container.innerHTML = '<div class="empty-state">No results yet</div>'; return; }
+    const allResults = [];
+    snapshot.forEach(d => allResults.push({ id: d.id, ...d.data() }));
+    allResults.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
     const rows = [];
-    snapshot.forEach(d => {
-      const r = d.data(), id = d.id;
+    allResults.forEach(({ id, ...r }) => {
       const date = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
       const dateStr = date.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
       rows.push(`<tr>
