@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v2.2</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0</span></div>
   </div>
 </div>
 
@@ -346,6 +346,16 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
 
   <!-- LEADERBOARD -->
   <div class="page active" id="page-leaderboard">
+    <div id="seasonBanner" style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 20px;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🏟</span>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px" id="seasonBannerName">Loading...</div>
+          <div style="font-size:12px;color:var(--muted)" id="seasonBannerStatus"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px" id="seasonBannerActions"></div>
+    </div>
     <div class="champion-card" id="champCard"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
     <div class="shame-card" id="shameCard" style="display:none"></div>
     <div class="section-title">All-time standings</div>
@@ -430,6 +440,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
       <button class="admin-sub-tab" id="atab-points" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--accent);color:#fff;" onclick="showAdminTab('points',this)">Points</button>
       <button class="admin-sub-tab" id="atab-players" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('players',this)">Players</button>
       <button class="admin-sub-tab" id="atab-results" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('results',this)">Results</button>
+      <button class="admin-sub-tab" id="atab-seasons" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('seasons',this)">Seasons</button>
       <button class="admin-sub-tab" id="atab-gametypes" style="padding:8px 20px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);" onclick="showAdminTab('gametypes',this)">Game Types</button>
     </div>
 
@@ -475,6 +486,22 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
       </div>
     </div>
 
+    <div class="admin-tab" id="admintab-seasons">
+      <div class="admin-card" style="max-width:560px">
+        <div class="admin-title">📅 Seasons</div>
+        <div class="admin-sub">Each season has its own standings and point rules. Closing a season locks it permanently.</div>
+        <div id="seasonsList" style="margin-bottom:24px"></div>
+        <div style="border-top:1px solid var(--border);padding-top:20px">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted)">CREATE NEW SEASON</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input class="form-inp" type="text" id="newSeasonName" placeholder="e.g. Season 2026" style="flex:1;min-width:160px">
+            <button class="btn" onclick="createSeason()">Create Season</button>
+          </div>
+          <p style="font-size:12px;color:var(--accent2);margin-top:8px">⚠ Creating a new season will archive the current active season first.</p>
+        </div>
+      </div>
+    </div>
+
     <div class="admin-tab" id="admintab-gametypes">
       <div class="admin-card" style="max-width:520px">
         <div class="admin-title">🎮 Game Types</div>
@@ -486,6 +513,12 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
           <button class="btn" onclick="addGameType()">Add</button>
         </div>
       </div>
+    </div>
+
+    <div class="admin-card" style="max-width:700px;margin-bottom:24px" id="seasonAdminCard">
+      <div class="admin-title">🏟 Season Management</div>
+      <div class="admin-sub" id="seasonAdminSub">Manage the current season and view past seasons.</div>
+      <div id="seasonAdminContent"><div class="loading-state"><div class="spinner"></div></div></div>
     </div>
 
     <div class="save-bar" style="margin-top:28px">
@@ -521,6 +554,8 @@ const PLAYER_CONFIG = {
 const ADMINS = ['Kutlu'];
 let currentUser = null;
 let selectedLogin = null;
+let currentSeason = null; // { id, name, year, status, pointRules }
+let currentSeason = null; // { id, name, year, pointRules, status }
 const chipState = {};
 let pts = { winner:3, participant:1, streak:1 };
 const DEFAULT_GAME_TYPES = [
@@ -578,10 +613,10 @@ async function doLogin() {
     av.style.background = data.color || PLAYER_CONFIG[selectedLogin]?.color;
     av.textContent = data.init || selectedLogin.slice(0,2);
     document.getElementById('userBadgeName').textContent = selectedLogin;
+    await initSeason();
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
-    loadPoints();
   } catch(e) {
     err.textContent = 'Connection error — check internet';
     console.error(e);
@@ -609,6 +644,8 @@ function showAdminTab(name, btn) {
   if (name === 'results') loadAdminResults();
   if (name === 'players') loadPlayersTable();
   if (name === 'gametypes') loadGameTypes();
+  if (name === 'seasons') loadSeasonsAdmin();
+  if (name === 'points') loadSeasonAdmin();
 }
 
 async function loadPlayersTable() {
@@ -651,10 +688,12 @@ function showToast(msg, isError) {
 
 // ── LEADERBOARD ───────────────────────────────────────────────
 function loadLeaderboard() {
-  db.collection('players').orderBy('points','desc').onSnapshot(snapshot => {
+  if (!currentSeason) return;
+  db.collection('seasons').doc(currentSeason.id).collection('playerStats')
+    .orderBy('points','desc').onSnapshot(snapshot => {
     const players = [];
     snapshot.forEach(d => players.push({ id: d.id, ...d.data() }));
-    if (!players.length) { document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No players yet</div>'; return; }
+    if (!players.length) { document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No games played this season yet!</div>'; return; }
 
     const champ = players[0];
     const cc = champ.color || 'linear-gradient(135deg,#6c63ff,#a78bfa)';
@@ -708,9 +747,10 @@ function loadLeaderboard() {
 
 // ── RECENT GAMES ──────────────────────────────────────────────
 function loadRecentGames() {
-  db.collection('results').orderBy('playedAt','desc').onSnapshot(snapshot => {
+  const q = currentSeason ? db.collection('results').where('seasonId','==',currentSeason.id).orderBy('playedAt','desc') : db.collection('results').orderBy('playedAt','desc');
+  q.onSnapshot(snapshot => {
     const results = [];
-    snapshot.forEach(d => results.push({ id: d.id, ...d.data() }));
+    snapshot.forEach(d => { const r = d.data(); if(r.seasonId===currentSeason?.id) results.push({ id: d.id, ...r }); });
     const rg = document.getElementById('recentGames');
     if (!results.length) { rg.innerHTML = '<div class="empty-state">No games yet!</div>'; return; }
     rg.innerHTML = results.slice(0,8).map(r => {
@@ -740,7 +780,14 @@ function loadRecentGames() {
 
 // ── MODAL ─────────────────────────────────────────────────────
 document.getElementById('gameDate').value = new Date().toISOString().split('T')[0];
-function openModal() { document.getElementById('modalOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function openModal() {
+  if (currentSeason?.status === 'closed') {
+    showToast('Season is closed — start a new season to add results', true);
+    return;
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow=''; }
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target===document.getElementById('modalOverlay')) closeModal(); });
 
@@ -799,26 +846,33 @@ async function submitResult() {
       }
     }
     btn.textContent='Saving...';
+    if (!currentSeason) { showToast('No active season! Ask admin to create one.', true); btn.disabled=false; btn.textContent='Save Result'; return; }
     await db.collection('results').add({
-      gameType, winners, winner: winners[0], participants,
+      gameType, winners, winner: winners[0], participants, seasonId: currentSeason.id,
+      seasonId: currentSeason.id,
       playedAt: new Date(gameDate+'T12:00:00'),
       submittedBy: currentUser.name,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    const seasonRef = db.collection('seasons').doc(currentSeason.id);
     for (const w of winners) {
-      await db.collection('players').doc(w).update({
+      const cfg = PLAYER_CONFIG[w] || {};
+      await seasonRef.collection('playerStats').doc(w).set({
+        name: w, role: cfg.role||'', color: cfg.color||'', init: cfg.init||w.slice(0,2),
         wins: firebase.firestore.FieldValue.increment(1),
-        points: firebase.firestore.FieldValue.increment(pts.winner + pts.streak),
+        points: firebase.firestore.FieldValue.increment(currentSeason.pointRules.winner + currentSeason.pointRules.streak),
         streak: firebase.firestore.FieldValue.increment(1),
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
-      });
+      }, { merge: true });
     }
     for (const p of participants.filter(p=>!winners.includes(p))) {
-      await db.collection('players').doc(p).update({
-        points: firebase.firestore.FieldValue.increment(pts.participant),
+      const cfg = PLAYER_CONFIG[p] || {};
+      await seasonRef.collection('playerStats').doc(p).set({
+        name: p, role: cfg.role||'', color: cfg.color||'', init: cfg.init||p.slice(0,2),
+        points: firebase.firestore.FieldValue.increment(currentSeason.pointRules.participant),
         streak: 0,
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
-      });
+      }, { merge: true });
     }
     closeModal(); launchConfetti(); deselectAllPlayers();
     const winnerLabel = winners.length > 1 ? winners.join(' & ') + ' win' : winners[0] + ' wins';
@@ -850,9 +904,10 @@ document.getElementById('profileModal').addEventListener('click', e => { if(e.ta
 function closeProfileModal() { document.getElementById('profileModal').classList.remove('open'); document.body.style.overflow=''; }
 async function openProfile(name) {
   document.getElementById('profileModal').classList.add('open'); document.body.style.overflow='hidden';
-  const snap = await db.collection('players').doc(name).get();
-  if(!snap.exists)return;
-  const p=snap.data(), cfg=PLAYER_CONFIG[name]||{};
+  if(!currentSeason)return;
+  const snap = await db.collection('seasons').doc(currentSeason.id).collection('playerStats').doc(name).get();
+  const p = snap.exists ? snap.data() : { wins:0, points:0, streak:0, gamesPlayed:0 };
+  const cfg=PLAYER_CONFIG[name]||{};
   document.getElementById('profAv').style.background=p.color||cfg.color||'var(--accent)';
   document.getElementById('profAv').textContent=p.init||name.slice(0,2);
   document.getElementById('profName').textContent=name;
@@ -862,7 +917,7 @@ async function openProfile(name) {
   document.getElementById('profStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
   const rSnap = await db.collection('results').get();
   const results=[]; rSnap.forEach(d=>results.push(d.data()));
-  const mine=results.filter(r=>r.participants?.includes(name)).sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
+  const mine=results.filter(r=>r.participants?.includes(name)&&r.seasonId===currentSeason.id).sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
   const gc={};
   mine.forEach(r=>{gc[r.gameType]=(gc[r.gameType]||0)+1;});
   const entries=Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,4);
@@ -891,9 +946,9 @@ async function openProfile(name) {
 async function populateMyStats() {
   if(!currentUser)return;
   const name=currentUser.name;
-  const snap=await db.collection('players').doc(name).get();
-  if(!snap.exists)return;
-  const p=snap.data();
+  if(!currentSeason)return;
+  const snap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').doc(name).get();
+  const p = snap.exists ? snap.data() : { wins:0, points:0, gamesPlayed:0, streak:0, color: PLAYER_CONFIG[name]?.color, init: PLAYER_CONFIG[name]?.init, role: PLAYER_CONFIG[name]?.role };
   document.getElementById('myAv').style.background=p.color||'var(--accent)';
   document.getElementById('myAv').textContent=p.init||name.slice(0,2);
   document.getElementById('myName').textContent=name;
@@ -902,11 +957,11 @@ async function populateMyStats() {
   document.getElementById('myPts').textContent=p.points||0;
   document.getElementById('myGames').textContent=p.gamesPlayed||0;
   document.getElementById('myStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
-  const allSnap=await db.collection('players').orderBy('points','desc').get();
+  const allSnap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').orderBy('points','desc').get();
   let rank=1; allSnap.forEach(d=>{ if(d.id!==name&&(d.data().points||0)>(p.points||0)) rank++; });
   document.getElementById('myRank').textContent='#'+rank;
   const rSnap=await db.collection('results').get();
-  const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name)) mine.push(r); }); mine.sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
+  const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name) && r.seasonId===currentSeason.id) mine.push(r); }); mine.sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
   // Draw progression chart
   let chartPoints = 0;
   const chartLabels = [];
@@ -996,30 +1051,29 @@ function adjustPts(key,delta) {
   document.getElementById('prev-streak').textContent='+'+pts.streak+' pt'+(pts.streak!==1?'s':'');
 }
 async function savePoints() {
+  if (!currentSeason) return;
+  if (currentSeason.status === 'closed') { showToast('Season is closed — cannot change points', true); return; }
   try {
-    await db.collection('config').doc('points').set({
-      winner: pts.winner,
-      participant: pts.participant,
-      streak: pts.streak
+    await db.collection('seasons').doc(currentSeason.id).update({
+      pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak }
     });
-    showToast('✅ Point rules saved to Firestore!');
+    currentSeason.pointRules = { winner: pts.winner, participant: pts.participant, streak: pts.streak };
+    showToast('✅ Point rules saved! Run recalculate to apply to past results.');
     writeLog('points_changed', 'Point rules updated — Winner: '+pts.winner+' pts, Participant: '+pts.participant+' pts, Streak: +'+pts.streak+' pts');
   } catch(e) { showToast('Error saving points', true); console.error(e); }
 }
 
 async function loadPoints() {
+  if (!currentSeason) return;
   try {
-    const snap = await db.collection('config').doc('points').get();
-    if (snap.exists) {
-      const d = snap.data();
-      pts.winner = d.winner ?? 3;
-      pts.participant = d.participant ?? 1;
-      pts.streak = d.streak ?? 1;
-      document.getElementById('pts-winner').textContent = pts.winner;
-      document.getElementById('pts-participant').textContent = pts.participant;
-      document.getElementById('pts-streak').textContent = pts.streak;
-      adjustPts('winner', 0); // refresh previews
-    }
+    const pr = currentSeason.pointRules || { winner:3, participant:1, streak:1 };
+    pts.winner = pr.winner ?? 3;
+    pts.participant = pr.participant ?? 1;
+    pts.streak = pr.streak ?? 1;
+    document.getElementById('pts-winner').textContent = pts.winner;
+    document.getElementById('pts-participant').textContent = pts.participant;
+    document.getElementById('pts-streak').textContent = pts.streak;
+    adjustPts('winner', 0);
   } catch(e) { console.error('Error loading points', e); }
 }
 function togglePwVis(btn) {
@@ -1059,8 +1113,7 @@ function loadAdminResults() {
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${(r.winners||[r.winner]).join('|')}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
-            <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
+            ${r.seasonId === currentSeason?.id ? `<button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${(r.winners||[r.winner]).join('|')}','${date.toISOString().split('T')[0]}')">✏ Edit</button><button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>` : '<span style="font-size:11px;color:var(--muted)">🔒 Locked</span>'}
           </div>
         </td>
       </tr>`);
@@ -1140,50 +1193,114 @@ async function deleteResult(id) {
 }
 
 async function recalculateAllStats() {
-  // Reset all players
-  const playerSnap = await db.collection('players').get();
+  if (!currentSeason) return;
+  const seasonRef = db.collection('seasons').doc(currentSeason.id);
+
+  // Reset all playerStats for this season
+  const statsSnap = await seasonRef.collection('playerStats').get();
   const batch = db.batch();
-  playerSnap.forEach(d => {
-    batch.update(d.ref, { wins: 0, points: 0, streak: 0, gamesPlayed: 0 });
-  });
+  statsSnap.forEach(d => batch.update(d.ref, { wins: 0, points: 0, streak: 0, gamesPlayed: 0 }));
   await batch.commit();
 
-  // Replay all results in chronological order
+  // Replay only this season's results in chronological order
   const resultsSnap = await db.collection('results').get();
   const results = [];
-  resultsSnap.forEach(d => results.push(d.data()));
-  results.sort((a, b) => {
-    const at = a.playedAt?.seconds || 0, bt = b.playedAt?.seconds || 0;
-    return at - bt;
-  });
+  resultsSnap.forEach(d => { const r = d.data(); if (r.seasonId === currentSeason.id) results.push(r); });
+  results.sort((a, b) => (a.playedAt?.seconds||0) - (b.playedAt?.seconds||0));
 
-  // Load current pts config
-  const ptsSnap = await db.collection('config').doc('points').get();
-  const ptsData = ptsSnap.exists ? ptsSnap.data() : { winner: 3, participant: 1, streak: 1 };
-
-  // Track streaks per player during replay
+  const ptsData = currentSeason.pointRules;
   const streaks = {};
   for (const r of results) {
     const winners = r.winners || (r.winner ? [r.winner] : []);
     const participants = r.participants || [];
     for (const w of winners) {
       streaks[w] = (streaks[w] || 0) + 1;
-      await db.collection('players').doc(w).update({
+      const cfg = PLAYER_CONFIG[w] || {};
+      await seasonRef.collection('playerStats').doc(w).set({
+        name: w, role: cfg.role||'', color: cfg.color||'', init: cfg.init||w.slice(0,2),
         wins: firebase.firestore.FieldValue.increment(1),
         points: firebase.firestore.FieldValue.increment(ptsData.winner + ptsData.streak),
         streak: streaks[w],
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
-      });
+      }, { merge: true });
     }
     for (const p of participants.filter(p => !winners.includes(p))) {
       streaks[p] = 0;
-      await db.collection('players').doc(p).update({
+      const cfg = PLAYER_CONFIG[p] || {};
+      await seasonRef.collection('playerStats').doc(p).set({
+        name: p, role: cfg.role||'', color: cfg.color||'', init: cfg.init||p.slice(0,2),
         points: firebase.firestore.FieldValue.increment(ptsData.participant),
         streak: 0,
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
-      });
+      }, { merge: true });
     }
   }
+}
+
+// ── SEASONS ADMIN ────────────────────────────────────────────
+async function loadSeasonsAdmin() {
+  const container = document.getElementById('seasonsList');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  const snap = await db.collection('seasons').orderBy('startDate','desc').get();
+  if (snap.empty) { container.innerHTML = '<div class="empty-state">No seasons yet — create one below!</div>'; return; }
+  const rows = [];
+  snap.forEach(d => {
+    const s = d.data();
+    const isActive = s.status === 'active';
+    const start = s.startDate?.toDate ? s.startDate.toDate() : new Date(s.startDate);
+    const startStr = start.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const endStr = s.endDate ? (s.endDate?.toDate ? s.endDate.toDate() : new Date(s.endDate)).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    rows.push(`<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${s.name}
+          <span style="margin-left:8px;padding:2px 10px;border-radius:99px;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;background:${isActive?'rgba(108,99,255,0.2)':'rgba(255,255,255,0.06)'};color:${isActive?'var(--accent)':'var(--muted)'}">${isActive?'ACTIVE':'CLOSED'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${startStr} → ${endStr} &nbsp;·&nbsp; Winner: ${s.pointRules?.winner||3}pts</div>
+      </div>
+      ${isActive ? `<button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.3);white-space:nowrap" onclick="closeSeason('${d.id}','${s.name}')">🔒 Close Season</button>` : ''}
+    </div>`);
+  });
+  container.innerHTML = rows.join('');
+}
+
+async function createSeason() {
+  const name = document.getElementById('newSeasonName').value.trim();
+  if (!name) { showToast('Enter a season name', true); return; }
+  if (!confirm(`Create "${name}"? Any current active season will be closed first.`)) return;
+
+  // Close existing active season
+  const activeSnap = await db.collection('seasons').where('status','==','active').get();
+  for (const d of activeSnap.docs) {
+    await d.ref.update({ status: 'closed', endDate: firebase.firestore.FieldValue.serverTimestamp() });
+  }
+
+  // Create new season with current point rules
+  const ref = await db.collection('seasons').add({
+    name,
+    status: 'active',
+    startDate: firebase.firestore.FieldValue.serverTimestamp(),
+    endDate: null,
+    pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak },
+    createdBy: currentUser.name
+  });
+  currentSeason = { id: ref.id, name, status: 'active', pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak } };
+  document.getElementById('currentSeasonBadge').textContent = name;
+  document.getElementById('newSeasonName').value = '';
+  showToast('✅ ' + name + ' is now active!');
+  writeLog('season_created', 'New season started: ' + name);
+  loadSeasonsAdmin();
+  loadLeaderboard();
+}
+
+async function closeSeason(id, name) {
+  if (!confirm(`Close "${name}" permanently? This cannot be undone. All results will be locked.`)) return;
+  await db.collection('seasons').doc(id).update({ status: 'closed', endDate: firebase.firestore.FieldValue.serverTimestamp() });
+  currentSeason = null;
+  document.getElementById('currentSeasonBadge').textContent = 'No active season';
+  showToast('🔒 ' + name + ' closed');
+  writeLog('season_closed', 'Season closed: ' + name);
+  loadSeasonsAdmin();
+  loadLeaderboard();
 }
 
 // ── ACTIVITY LOG ─────────────────────────────────────────────
@@ -1191,6 +1308,8 @@ const LOG_ICONS = {
   result_added:    '🏆',
   result_edited:   '✏️',
   result_deleted:  '🗑',
+  season_created:  '📅',
+  season_closed:   '🔒',
   points_changed:  '⚙️',
   gametype_added:  '🎮',
   gametype_edited: '🎮',
@@ -1340,6 +1459,91 @@ async function loadWeekly() {
     }).join('')}`;
 }
 
+// ── SEASONS ──────────────────────────────────────────────────
+async function loadCurrentSeason() {
+  try {
+    const snap = await db.collection('seasons').where('status','==','active').limit(1).get();
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      currentSeason = { id: d.id, ...d.data() };
+      // Load season's point rules into pts
+      if (currentSeason.pointRules) {
+        pts.winner = currentSeason.pointRules.winner ?? 3;
+        pts.participant = currentSeason.pointRules.participant ?? 1;
+        pts.streak = currentSeason.pointRules.streak ?? 1;
+        document.getElementById('pts-winner').textContent = pts.winner;
+        document.getElementById('pts-participant').textContent = pts.participant;
+        document.getElementById('pts-streak').textContent = pts.streak;
+        adjustPts('winner', 0);
+      }
+      document.getElementById('currentSeasonBadge').textContent = currentSeason.name;
+      document.getElementById('currentSeasonBadge').style.display = 'inline-block';
+    } else {
+      // No active season — prompt admin to create one
+      currentSeason = null;
+      document.getElementById('currentSeasonBadge').textContent = 'No active season';
+      document.getElementById('currentSeasonBadge').style.display = 'inline-block';
+    }
+  } catch(e) { console.error('loadCurrentSeason error:', e); }
+}
+
+async function getSeasonPlayerStats(seasonId) {
+  const snap = await db.collection('seasons').doc(seasonId).collection('playerStats').get();
+  const stats = {};
+  snap.forEach(d => stats[d.id] = d.data());
+  return stats;
+}
+
+async function updateSeasonPlayerStats(seasonId, winner, winners, participants, ptsData) {
+  for (const w of winners) {
+    const ref = db.collection('seasons').doc(seasonId).collection('playerStats').doc(w);
+    const snap = await ref.get();
+    const cur = snap.exists ? snap.data() : { wins:0, points:0, streak:0, gamesPlayed:0 };
+    cur.wins = (cur.wins||0) + 1;
+    cur.streak = (cur.streak||0) + 1;
+    cur.points = (cur.points||0) + ptsData.winner + ptsData.streak;
+    cur.gamesPlayed = (cur.gamesPlayed||0) + 1;
+    await ref.set(cur);
+  }
+  for (const p of participants.filter(p => !winners.includes(p))) {
+    const ref = db.collection('seasons').doc(seasonId).collection('playerStats').doc(p);
+    const snap = await ref.get();
+    const cur = snap.exists ? snap.data() : { wins:0, points:0, streak:0, gamesPlayed:0 };
+    cur.streak = 0;
+    cur.points = (cur.points||0) + ptsData.participant;
+    cur.gamesPlayed = (cur.gamesPlayed||0) + 1;
+    await ref.set(cur);
+  }
+}
+
+async function recalculateSeasonStats(seasonId) {
+  // Clear all player stats for this season
+  const statsSnap = await db.collection('seasons').doc(seasonId).collection('playerStats').get();
+  const batch = db.batch();
+  statsSnap.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+
+  // Get season's point rules
+  const seasonSnap = await db.collection('seasons').doc(seasonId).get();
+  const ptsData = seasonSnap.data().pointRules || { winner:3, participant:1, streak:1 };
+
+  // Replay results for this season in order
+  const resultsSnap = await db.collection('results').where('seasonId','==',seasonId).get();
+  const results = [];
+  resultsSnap.forEach(d => results.push(d.data()));
+  results.sort((a,b) => (a.playedAt?.seconds||0) - (b.playedAt?.seconds||0));
+
+  const streaks = {};
+  for (const r of results) {
+    const rWinners = r.winners || (r.winner ? [r.winner] : []);
+    const participants = r.participants || [];
+    await updateSeasonPlayerStats(seasonId, rWinners[0], rWinners, participants, ptsData);
+    // Track streaks manually
+    for (const w of rWinners) streaks[w] = (streaks[w]||0) + 1;
+    for (const p of participants.filter(p => !rWinners.includes(p))) streaks[p] = 0;
+  }
+}
+
 // ── GAME TYPES ───────────────────────────────────────────────
 
 async function getGameTypes() {
@@ -1426,6 +1630,151 @@ async function initGameTypeDropdown() {
   refreshGameTypeDropdown(types);
 }
 
+// ── SEASONS ──────────────────────────────────────────────────
+async function initSeason() {
+  // Find active season, or create first one
+  const snap = await db.collection('seasons').where('status','==','active').limit(1).get();
+  if (!snap.empty) {
+    const d = snap.docs[0];
+    currentSeason = { id: d.id, ...d.data() };
+  } else {
+    // Create Season 1
+    const year = new Date().getFullYear();
+    const ref = await db.collection('seasons').add({
+      name: 'Season 1 · ' + year,
+      year,
+      status: 'active',
+      pointRules: { winner: 3, participant: 1, streak: 1 },
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentSeason = { id: ref.id, name: 'Season 1 · ' + year, year, status: 'active', pointRules: { winner:3, participant:1, streak:1 } };
+    writeLog('season_started', 'Season 1 · ' + year + ' started!');
+  }
+  updateSeasonBanner();
+  loadPoints();
+}
+
+function updateSeasonBanner() {
+  if (!currentSeason) return;
+  document.getElementById('seasonBannerName').textContent = currentSeason.name;
+  const isActive = currentSeason.status === 'active';
+  document.getElementById('seasonBannerStatus').textContent = isActive ? '🟢 Active season' : '🔒 Closed';
+  document.getElementById('seasonBannerActions').innerHTML = isActive
+    ? `<button class="btn sec sm" onclick="showPage('admin',document.getElementById('adminTab'));showAdminTab('points',document.getElementById('atab-points'));loadSeasonAdmin()">Manage Season</button>`
+    : '';
+}
+
+async function loadSeasonAdmin() {
+  const container = document.getElementById('seasonAdminContent');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  const snap = await db.collection('seasons').orderBy('createdAt','desc').get();
+  const seasons = [];
+  snap.forEach(d => seasons.push({ id: d.id, ...d.data() }));
+
+  const active = seasons.find(s => s.status === 'active');
+  const closed = seasons.filter(s => s.status === 'closed');
+
+  container.innerHTML = `
+    ${active ? `
+    <div style="background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:12px;padding:16px 20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px">${active.name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">🟢 Active · Point rules: Win ${active.pointRules?.winner||3}pts, Participate ${active.pointRules?.participant||1}pt, Streak +${active.pointRules?.streak||1}pt</div>
+        </div>
+        <button class="btn sm" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="closeSeason('${active.id}','${active.name}')">🔒 Close Season</button>
+      </div>
+    </div>` : ''}
+    <div style="margin-bottom:12px">
+      <button class="btn" onclick="startNewSeason()" ${active ? '' : ''}>＋ Start New Season</button>
+    </div>
+    ${closed.length ? `
+    <div class="section-title" style="margin-top:16px;margin-bottom:10px">Past seasons</div>
+    ${closed.map(s => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:600;font-size:14px">🔒 ${s.name}</div>
+          <div style="font-size:11px;color:var(--muted)">Closed · Win ${s.pointRules?.winner||3}pts, Participate ${s.pointRules?.participant||1}pt</div>
+        </div>
+        <button class="btn sec sm" onclick="viewSeason('${s.id}','${s.name}')">View</button>
+      </div>`).join('')}` : ''}`;
+}
+
+async function closeSeason(id, name) {
+  if (!confirm('Close "' + name + '"? This will lock all results and stats for this season forever.')) return;
+  await db.collection('seasons').doc(id).update({ status: 'closed', closedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  writeLog('season_closed', name + ' has been closed and locked 🔒');
+  showToast('Season closed! Start a new one when ready.');
+  currentSeason.status = 'closed';
+  updateSeasonBanner();
+  loadSeasonAdmin();
+}
+
+async function startNewSeason() {
+  const active = currentSeason?.status === 'active';
+  if (active) { showToast('Close the current season first!', true); return; }
+  const year = new Date().getFullYear();
+  const snap = await db.collection('seasons').orderBy('createdAt','desc').limit(1).get();
+  let num = 1;
+  if (!snap.empty) {
+    const lastName = snap.docs[0].data().name || '';
+    const match = lastName.match(/Season (\d+)/);
+    if (match) num = parseInt(match[1]) + 1;
+  }
+  const name = 'Season ' + num + ' · ' + year;
+  const ref = await db.collection('seasons').add({
+    name, year, status: 'active',
+    pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak },
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  currentSeason = { id: ref.id, name, year, status: 'active', pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak } };
+  writeLog('season_started', name + ' has started! 🏟');
+  showToast('🎉 ' + name + ' has started!');
+  updateSeasonBanner();
+  loadLeaderboard();
+  loadSeasonAdmin();
+}
+
+async function viewSeason(id, name) {
+  // Switch leaderboard to show this closed season
+  const snap = await db.collection('seasons').doc(id).get();
+  const season = { id, ...snap.data() };
+  const statsSnap = await db.collection('seasons').doc(id).collection('playerStats').orderBy('points','desc').get();
+  const players = [];
+  statsSnap.forEach(d => players.push({ id: d.id, ...d.data() }));
+
+  document.getElementById('seasonBannerName').textContent = name + ' (archived)';
+  document.getElementById('seasonBannerStatus').textContent = '🔒 Closed season — read only';
+  document.getElementById('seasonBannerActions').innerHTML =
+    `<button class="btn sec sm" onclick="updateSeasonBanner();loadLeaderboard()">← Back to current</button>`;
+  showPage('leaderboard', document.querySelector('.nav-tab'));
+
+  const rankEmoji = ['🥇','🥈','🥉'];
+  document.getElementById('champCard').innerHTML = players.length ? `
+    <div class="champ-label">Season Winner</div>
+    <div class="champ-info">
+      <div class="champ-avatar" style="background:${players[0].color||'var(--accent)'}">${players[0].init||players[0].name?.slice(0,2)}</div>
+      <div><div class="champ-name">${players[0].name}</div>
+      <div class="champ-meta">${players[0].role} · <strong style="color:var(--accent3)">${players[0].wins||0} wins · ${players[0].points||0} pts</strong></div></div>
+    </div>` : '<div class="empty-state">No data</div>';
+
+  document.getElementById('leaderboardRows').innerHTML = players.map((p,i) => {
+    const pc = p.color||'linear-gradient(135deg,#6c63ff,#a78bfa)';
+    const rank = i < 3 ? rankEmoji[i] : (i+1);
+    const rankCls = i < 3 ? ['rank-1','rank-2','rank-3'][i] : 'rank-n';
+    const topCls = i < 3 ? ['top1','top2','top3'][i] : '';
+    return `<div class="player-row ${topCls}">
+      <div class="rank ${rankCls}">${rank}</div>
+      <div class="pident"><div class="av" style="background:${pc}">${p.init||p.name?.slice(0,2)}</div>
+        <div><div class="pname">${p.name}</div><div class="prole">${p.role}</div></div></div>
+      <div class="streak s-cold">— Archived</div>
+      <div class="wins">${p.wins||0}</div>
+      <div class="pts-col">${p.points||0} pts</div>
+    </div>`;
+  }).join('');
+  document.getElementById('shameCard').style.display = 'none';
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 seedPlayersIfNeeded().catch(console.error);
 
@@ -1447,10 +1796,10 @@ seedPlayersIfNeeded().catch(console.error);
     av.style.background = data.color || PLAYER_CONFIG[saved]?.color;
     av.textContent = data.init || saved.slice(0,2);
     document.getElementById('userBadgeName').textContent = saved;
+    await initSeason();
     loadLeaderboard();
     loadRecentGames();
     initGameTypeDropdown();
-    loadPoints();
   } catch(e) { console.error('Auto-login failed', e); }
 })();
 </script>
@@ -1481,7 +1830,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v2.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
