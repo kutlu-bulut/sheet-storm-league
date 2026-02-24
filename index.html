@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0.1</span></div>
   </div>
 </div>
 
@@ -515,11 +515,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
       </div>
     </div>
 
-    <div class="admin-card" style="max-width:700px;margin-bottom:24px" id="seasonAdminCard">
-      <div class="admin-title">🏟 Season Management</div>
-      <div class="admin-sub" id="seasonAdminSub">Manage the current season and view past seasons.</div>
-      <div id="seasonAdminContent"><div class="loading-state"><div class="spinner"></div></div></div>
-    </div>
+
 
     <div class="save-bar" style="margin-top:28px">
       <span style="font-size:14px;color:var(--muted)">Changes go <strong style="color:var(--accent4)">live instantly</strong> via Firebase</span>
@@ -613,7 +609,6 @@ async function doLogin() {
     av.style.background = data.color || PLAYER_CONFIG[selectedLogin]?.color;
     av.textContent = data.init || selectedLogin.slice(0,2);
     document.getElementById('userBadgeName').textContent = selectedLogin;
-    await initSeason();
     await loadCurrentSeason();
     loadLeaderboard();
     loadRecentGames();
@@ -646,7 +641,7 @@ function showAdminTab(name, btn) {
   if (name === 'players') loadPlayersTable();
   if (name === 'gametypes') loadGameTypes();
   if (name === 'seasons') loadSeasonsAdmin();
-  if (name === 'points') loadSeasonAdmin();
+  if (name === 'points') loadSeasonsAdmin();
 }
 
 async function loadPlayersTable() {
@@ -755,10 +750,7 @@ function loadLeaderboard() {
       </div>`;
     }).join('');
   });
-}
-
-
-// ── RECENT GAMES ──────────────────────────────────────────────
+}// ── RECENT GAMES ──────────────────────────────────────────────
 function loadRecentGames() {
   db.collection('results').onSnapshot(snapshot => {
     const results = [];
@@ -1666,41 +1658,7 @@ async function initGameTypeDropdown() {
   refreshGameTypeDropdown(types);
 }
 
-// ── SEASONS ──────────────────────────────────────────────────
-async function initSeason() {
-  // Find active season, or create first one
-  const snap = await db.collection('seasons').where('status','==','active').limit(1).get();
-  if (!snap.empty) {
-    const d = snap.docs[0];
-    currentSeason = { id: d.id, ...d.data() };
-  } else {
-    // Create Season 1
-    const year = new Date().getFullYear();
-    const ref = await db.collection('seasons').add({
-      name: 'Season 1 · ' + year,
-      year,
-      status: 'active',
-      pointRules: { winner: 3, participant: 1, streak: 1 },
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    currentSeason = { id: ref.id, name: 'Season 1 · ' + year, year, status: 'active', pointRules: { winner:3, participant:1, streak:1 } };
-    writeLog('season_started', 'Season 1 · ' + year + ' started!');
-  }
-  updateSeasonBanner();
-  loadPoints();
-}
-
-function updateSeasonBanner() {
-  if (!currentSeason) return;
-  document.getElementById('seasonBannerName').textContent = currentSeason.name;
-  const isActive = currentSeason.status === 'active';
-  document.getElementById('seasonBannerStatus').textContent = isActive ? '🟢 Active season' : '🔒 Closed';
-  document.getElementById('seasonBannerActions').innerHTML = isActive
-    ? `<button class="btn sec sm" onclick="showPage('admin',document.getElementById('adminTab'));showAdminTab('points',document.getElementById('atab-points'));loadSeasonAdmin()">Manage Season</button>`
-    : '';
-}
-
-async function loadSeasonAdmin() {
+// ── SEASONS ──────────────────────────────────────────────────async function loadSeasonsAdmin() {
   const container = document.getElementById('seasonAdminContent');
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
   const snap = await db.collection('seasons').orderBy('createdAt','desc').get();
@@ -1722,7 +1680,7 @@ async function loadSeasonAdmin() {
       </div>
     </div>` : ''}
     <div style="margin-bottom:12px">
-      <button class="btn" onclick="startNewSeason()" ${active ? '' : ''}>＋ Start New Season</button>
+      <button class="btn" onclick="createSeason()" ${active ? '' : ''}>＋ Start New Season</button>
     </div>
     ${closed.length ? `
     <div class="section-title" style="margin-top:16px;margin-bottom:10px">Past seasons</div>
@@ -1743,32 +1701,7 @@ async function closeSeason(id, name) {
   showToast('Season closed! Start a new one when ready.');
   currentSeason.status = 'closed';
   updateSeasonBanner();
-  loadSeasonAdmin();
-}
-
-async function startNewSeason() {
-  const active = currentSeason?.status === 'active';
-  if (active) { showToast('Close the current season first!', true); return; }
-  const year = new Date().getFullYear();
-  const snap = await db.collection('seasons').orderBy('createdAt','desc').limit(1).get();
-  let num = 1;
-  if (!snap.empty) {
-    const lastName = snap.docs[0].data().name || '';
-    const match = lastName.match(/Season (\d+)/);
-    if (match) num = parseInt(match[1]) + 1;
-  }
-  const name = 'Season ' + num + ' · ' + year;
-  const ref = await db.collection('seasons').add({
-    name, year, status: 'active',
-    pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak },
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  currentSeason = { id: ref.id, name, year, status: 'active', pointRules: { winner: pts.winner, participant: pts.participant, streak: pts.streak } };
-  writeLog('season_started', name + ' has started! 🏟');
-  showToast('🎉 ' + name + ' has started!');
-  updateSeasonBanner();
-  loadLeaderboard();
-  loadSeasonAdmin();
+  loadSeasonsAdmin();
 }
 
 async function viewSeason(id, name) {
@@ -1832,7 +1765,6 @@ seedPlayersIfNeeded().catch(console.error);
     av.style.background = data.color || PLAYER_CONFIG[saved]?.color;
     av.textContent = data.init || saved.slice(0,2);
     document.getElementById('userBadgeName').textContent = saved;
-    await initSeason();
     await loadCurrentSeason();
     loadLeaderboard();
     loadRecentGames();
@@ -1867,7 +1799,107 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+</footer>
+
+</body>
+</html
+async function viewSeason(id, name) {
+  // Switch leaderboard to show this closed season
+  const snap = await db.collection('seasons').doc(id).get();
+  const season = { id, ...snap.data() };
+  const statsSnap = await db.collection('seasons').doc(id).collection('playerStats').get();
+  const players = [];
+  statsSnap.forEach(d => players.push({ id: d.id, ...d.data() }));
+
+  document.getElementById('seasonBannerName').textContent = name + ' (archived)';
+  document.getElementById('seasonBannerStatus').textContent = '🔒 Closed season — read only';
+  document.getElementById('seasonBannerActions').innerHTML =
+    `<button class="btn sec sm" onclick="updateSeasonBanner();loadLeaderboard()">← Back to current</button>`;
+  showPage('leaderboard', document.querySelector('.nav-tab'));
+
+  const rankEmoji = ['🥇','🥈','🥉'];
+  document.getElementById('champCard').innerHTML = players.length ? `
+    <div class="champ-label">Season Winner</div>
+    <div class="champ-info">
+      <div class="champ-avatar" style="background:${players[0].color||'var(--accent)'}">${players[0].init||players[0].name?.slice(0,2)}</div>
+      <div><div class="champ-name">${players[0].name}</div>
+      <div class="champ-meta">${players[0].role} · <strong style="color:var(--accent3)">${players[0].wins||0} wins · ${players[0].points||0} pts</strong></div></div>
+    </div>` : '<div class="empty-state">No data</div>';
+
+  document.getElementById('leaderboardRows').innerHTML = players.map((p,i) => {
+    const pc = p.color||'linear-gradient(135deg,#6c63ff,#a78bfa)';
+    const rank = i < 3 ? rankEmoji[i] : (i+1);
+    const rankCls = i < 3 ? ['rank-1','rank-2','rank-3'][i] : 'rank-n';
+    const topCls = i < 3 ? ['top1','top2','top3'][i] : '';
+    return `<div class="player-row ${topCls}">
+      <div class="rank ${rankCls}">${rank}</div>
+      <div class="pident"><div class="av" style="background:${pc}">${p.init||p.name?.slice(0,2)}</div>
+        <div><div class="pname">${p.name}</div><div class="prole">${p.role}</div></div></div>
+      <div class="streak s-cold">— Archived</div>
+      <div class="wins">${p.wins||0}</div>
+      <div class="pts-col">${p.points||0} pts</div>
+    </div>`;
+  }).join('');
+  document.getElementById('shameCard').style.display = 'none';
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+seedPlayersIfNeeded().catch(console.error);
+
+// Auto-login from saved session
+(async () => {
+  const saved = localStorage.getItem('ssl_user');
+  if (!saved) return;
+  try {
+    const snap = await db.collection('players').doc(saved).get();
+    if (!snap.exists) { localStorage.removeItem('ssl_user'); return; }
+    const data = snap.data();
+    currentUser = { name: saved, ...data };
+    selectedLogin = saved;
+    document.getElementById('loginScreen').remove();
+    document.getElementById('mainNav').style.display = 'block';
+    document.getElementById('mainContainer').style.display = 'block';
+    if (data.isAdmin) document.getElementById('adminTab').style.display = 'inline-block';
+    const av = document.getElementById('userBadgeAv');
+    av.style.background = data.color || PLAYER_CONFIG[saved]?.color;
+    av.textContent = data.init || saved.slice(0,2);
+    document.getElementById('userBadgeName').textContent = saved;
+    await loadCurrentSeason();
+    loadLeaderboard();
+    loadRecentGames();
+    initGameTypeDropdown();
+  } catch(e) { console.error('Auto-login failed', e); }
+})();
+</script>
+
+<!-- EDIT RESULT MODAL -->
+<div class="modal-overlay" id="editResultModal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <div class="modal-title">Edit Result</div>
+    <div class="modal-sub">Update the game details</div>
+    <input type="hidden" id="editResultId">
+    <div class="form-row">
+      <label class="form-label">Game type</label>
+      <input class="form-inp" type="text" id="editGameType">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Winners (select one or more)</label>
+      <div id="editWinnerChips" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div class="chip" data-ew="Andreea" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Andreea</div><div class="chip" data-ew="Kutlu" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Kutlu</div><div class="chip" data-ew="Linn" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Linn</div><div class="chip" data-ew="Ludvig" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Ludvig</div><div class="chip" data-ew="Nicolay" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Nicolay</div><div class="chip" data-ew="Robert" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Robert</div><div class="chip" data-ew="Teddy" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Teddy</div><div class="chip" data-ew="Xin" onclick="toggleEditWinner(this)" style="font-size:12px;padding:8px 4px"><span class="chip-icon">👤</span>Xin</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Date</label>
+      <input class="form-inp" type="date" id="editDate">
+    </div>
+    <button class="form-submit" onclick="saveEditResult()">Save Changes</button>
+  </div>
+</div>
+
+<footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
