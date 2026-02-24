@@ -469,6 +469,12 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <div class="admin-title">📅 Seasons</div>
         <div class="admin-sub">Each season has its own standings. Closing a season locks it permanently.</div>
         <div id="seasonsList" style="margin-bottom:24px"></div>
+        <div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:4px">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">MIGRATE LEGACY RESULTS</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Stamp all results with no season ID with the current active season.</div>
+          <button class="btn" onclick="migrateLegacyResults()">🔗 Connect to Current Season</button>
+          <div id="migrateStatus" style="margin-top:8px;font-size:13px;color:var(--accent)"></div>
+        </div>
         <div id="createSeasonSection" style="border-top:1px solid var(--border);padding-top:20px;display:none">
           <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;color:var(--muted)">CREATE NEW SEASON</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -1206,6 +1212,31 @@ async function loadCurrentSeason() {
       document.getElementById('currentSeasonBadge').style.display = 'inline-block';
     }
   } catch(e) { console.error('loadCurrentSeason:', e); }
+}
+
+async function migrateLegacyResults() {
+  if (!currentSeason) { showToast('No active season to migrate to', true); return; }
+  if (!confirm(`Connect all unlinked results to "${currentSeason.name}"?`)) return;
+  const statusEl = document.getElementById('migrateStatus');
+  statusEl.textContent = 'Scanning...';
+  try {
+    const snap = await db.collection('results').get();
+    const batch = db.batch();
+    let count = 0;
+    snap.forEach(d => {
+      if (!d.data().seasonId) {
+        batch.update(d.ref, { seasonId: currentSeason.id });
+        count++;
+      }
+    });
+    if (count === 0) { statusEl.textContent = '✅ All results already have a season.'; return; }
+    await batch.commit();
+    statusEl.textContent = `✅ ${count} result${count !== 1 ? 's' : ''} connected to ${currentSeason.name}!`;
+    showToast(`✅ ${count} results migrated!`);
+  } catch(e) {
+    statusEl.textContent = '❌ Error — check console';
+    console.error(e);
+  }
 }
 
 async function loadSeasonsAdmin() {
