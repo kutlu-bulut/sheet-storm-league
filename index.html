@@ -1658,52 +1658,7 @@ async function initGameTypeDropdown() {
   refreshGameTypeDropdown(types);
 }
 
-// ── SEASONS ──────────────────────────────────────────────────async function loadSeasonsAdmin() {
-  const container = document.getElementById('seasonAdminContent');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
-  const snap = await db.collection('seasons').orderBy('createdAt','desc').get();
-  const seasons = [];
-  snap.forEach(d => seasons.push({ id: d.id, ...d.data() }));
-
-  const active = seasons.find(s => s.status === 'active');
-  const closed = seasons.filter(s => s.status === 'closed');
-
-  container.innerHTML = `
-    ${active ? `
-    <div style="background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:12px;padding:16px 20px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px">${active.name}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">🟢 Active · Point rules: Win ${active.pointRules?.winner||3}pts, Participate ${active.pointRules?.participant||1}pt, Streak +${active.pointRules?.streak||1}pt</div>
-        </div>
-        <button class="btn sm" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="closeSeason('${active.id}','${active.name}')">🔒 Close Season</button>
-      </div>
-    </div>` : ''}
-    <div style="margin-bottom:12px">
-      <button class="btn" onclick="createSeason()" ${active ? '' : ''}>＋ Start New Season</button>
-    </div>
-    ${closed.length ? `
-    <div class="section-title" style="margin-top:16px;margin-bottom:10px">Past seasons</div>
-    ${closed.map(s => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="font-weight:600;font-size:14px">🔒 ${s.name}</div>
-          <div style="font-size:11px;color:var(--muted)">Closed · Win ${s.pointRules?.winner||3}pts, Participate ${s.pointRules?.participant||1}pt</div>
-        </div>
-        <button class="btn sec sm" onclick="viewSeason('${s.id}','${s.name}')">View</button>
-      </div>`).join('')}` : ''}`;
-}
-
-async function closeSeason(id, name) {
-  if (!confirm('Close "' + name + '"? This will lock all results and stats for this season forever.')) return;
-  await db.collection('seasons').doc(id).update({ status: 'closed', closedAt: firebase.firestore.FieldValue.serverTimestamp() });
-  writeLog('season_closed', name + ' has been closed and locked 🔒');
-  showToast('Season closed! Start a new one when ready.');
-  currentSeason.status = 'closed';
-  updateSeasonBanner();
-  loadSeasonsAdmin();
-}
-
+// ── SEASONS ──────────────────────────────────────────────────
 async function viewSeason(id, name) {
   // Switch leaderboard to show this closed season
   const snap = await db.collection('seasons').doc(id).get();
