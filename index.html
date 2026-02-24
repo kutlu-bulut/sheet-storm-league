@@ -658,7 +658,7 @@ function loadLeaderboard() {
   if (!currentSeason) {
     document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No active season — ask admin to create one 📅</div>';
     document.getElementById('champCard').innerHTML = '';
-    document.getElementById('shameBoard').style.display = 'none';
+    document.getElementById('shameCard').style.display = 'none';
     return;
   }
   // Read from seasons/{id}/playerStats subcollection — no orderBy to avoid index requirement
@@ -692,7 +692,7 @@ function loadLeaderboard() {
     // Shame board
     const hasPlayed = players.filter(p => p.gamesPlayed > 0);
     const shame = hasPlayed.sort((a,b)=>(b.gamesPlayed-b.wins)-(a.gamesPlayed-a.wins))[0];
-    const sc = document.getElementById('shameBoard');
+    const sc = document.getElementById('shameCard');
     if (shame && (shame.gamesPlayed-shame.wins) > 0) {
       sc.style.display = 'block';
       sc.querySelector('.shame-name').textContent = shame.name;
