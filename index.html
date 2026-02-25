@@ -607,6 +607,7 @@ function showPage(name, btn) {
   document.getElementById('page-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'mystats') populateMyStats();
+  if (name === 'weekly') loadWeekly();
 }
 
 // ── ADMIN TABS ────────────────────────────────────────────────
@@ -700,11 +701,14 @@ function loadLeaderboard() {
     const shame = hasPlayed.sort((a,b)=>(b.gamesPlayed-b.wins)-(a.gamesPlayed-a.wins))[0];
     const sc = document.getElementById('shameCard');
     if (shame && (shame.gamesPlayed-shame.wins) > 0) {
+      const losses = shame.gamesPlayed - shame.wins;
+      sc.innerHTML = `<div class="shame-label">Shame Board</div>
+        <div class="shame-info">
+          <div class="shame-avatar" style="background:${shame.color||'linear-gradient(135deg,#ff6b6b,#c0392b)'}">${shame.init||shame.name.slice(0,2)}</div>
+          <div><div class="shame-name">${shame.name}</div>
+          <div class="shame-meta">${shame.role} · 😬 ${losses} game${losses!==1?'s':''} without a win</div></div>
+        </div>`;
       sc.style.display = 'block';
-      sc.querySelector('.shame-name').textContent = shame.name;
-      sc.querySelector('.shame-avatar').style.background = shame.color||'linear-gradient(135deg,#ff6b6b,#c0392b)';
-      sc.querySelector('.shame-avatar').textContent = shame.init||shame.name.slice(0,2);
-      sc.querySelector('.shame-meta').textContent = `${shame.role} · 😬 ${shame.gamesPlayed-shame.wins} games without a win`;
     } else { sc.style.display = 'none'; }
 
     // Leaderboard rows
@@ -1311,6 +1315,91 @@ async function closeSeason(id, name) {
     loadSeasonsAdmin();
     loadLeaderboard();
   } catch(e) { showToast('Error closing season', true); console.error(e); }
+}
+
+
+// ── WEEKLY ───────────────────────────────────────────────────
+let weekOffset = 0;
+
+function getWeekRange(offset) {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { start: monday, end: sunday };
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  const nextBtn = document.getElementById('nextWeekBtn');
+  nextBtn.style.opacity = weekOffset >= 0 ? '0.4' : '1';
+  nextBtn.style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+  loadWeekly();
+}
+
+async function loadWeekly() {
+  const container = document.getElementById('weeklyLeaderboard');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+  const { start, end } = getWeekRange(weekOffset);
+  const label = weekOffset === 0 ? 'This week' : weekOffset === -1 ? 'Last week'
+    : `Week of ${start.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`;
+  document.getElementById('weekLabel').textContent =
+    label + ' · ' + start.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) +
+    ' – ' + end.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  const nextBtn = document.getElementById('nextWeekBtn');
+  nextBtn.style.opacity = weekOffset >= 0 ? '0.4' : '1';
+  nextBtn.style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+  try {
+    const snap = await db.collection('results').get();
+    const results = [];
+    snap.forEach(d => {
+      const r = d.data();
+      const d2 = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
+      const rSeason = r.seasonId || (currentSeason?.id);
+      const inSeason = !currentSeason || rSeason === currentSeason.id;
+      if (d2 >= start && d2 <= end && inSeason) results.push(r);
+    });
+    if (!results.length) {
+      container.innerHTML = '<div class="empty-state">No games this week 🏖</div>';
+      return;
+    }
+    const pr = currentSeason?.pointRules || pts;
+    const stats = {};
+    results.forEach(r => {
+      (r.participants||[]).forEach(p => {
+        if (!stats[p]) stats[p] = { wins:0, points:0, games:0 };
+        stats[p].games++;
+        if (p === r.winner) { stats[p].wins++; stats[p].points += pr.winner; }
+        else stats[p].points += pr.participant;
+      });
+    });
+    const sorted = Object.entries(stats).sort((a,b) => b[1].points - a[1].points);
+    const rankEmoji = ['🥇','🥈','🥉'];
+    container.innerHTML = `
+      <div class="col-header"><div>#</div><div>Player</div><div class="col-right">Games</div><div class="col-right">Wins</div><div class="col-right">Points</div></div>
+      ${sorted.map(([name, s], i) => {
+        const cfg = PLAYER_CONFIG[name] || {};
+        const rank = i < 3 ? rankEmoji[i] : (i+1);
+        const rankCls = i < 3 ? ['rank-1','rank-2','rank-3'][i] : 'rank-n';
+        const topCls = i < 3 ? ['top1','top2','top3'][i] : '';
+        return `<div class="player-row ${topCls}">
+          <div class="rank ${rankCls}">${rank}</div>
+          <div class="pident"><div class="av" style="background:${cfg.color||'var(--accent)'}">${cfg.init||name.slice(0,2)}</div>
+            <div><div class="pname">${name}</div><div class="prole">${cfg.role||''}</div></div></div>
+          <div style="text-align:right;color:var(--muted);font-size:14px">${s.games}</div>
+          <div class="wins">${s.wins}</div>
+          <div class="pts-col">${s.points} pts</div>
+        </div>`;
+      }).join('')}`;
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state">Error loading weekly</div>';
+    console.error(e);
+  }
 }
 
 // ── GAME TYPES ───────────────────────────────────────────────
