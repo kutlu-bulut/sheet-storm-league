@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.1</span></div>
   </div>
 </div>
 
@@ -1098,7 +1098,7 @@ function loadAdminResults() {
       rows.push(`<tr>
         <td style="font-size:13px;color:var(--muted)">${dateStr}</td>
         <td style="font-size:13px">${r.gameType}</td>
-        <td style="font-size:13px;font-weight:600">🏆 ${r.winner}</td>
+        <td style="font-size:13px;font-weight:600">🏆 ${(r.winners && r.winners.length ? r.winners : [r.winner||""]).join(" & ")}</td>
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
@@ -1200,16 +1200,18 @@ async function recalculateAllStats() {
   const pr = currentSeason.pointRules || pts;
   const streaks = {};
   for (const r of results) {
-    const winner = r.winner;
-    if (!winner) continue;
-    streaks[winner] = (streaks[winner]||0) + 1;
-    await sRef.collection('playerStats').doc(winner).set({
-      wins: firebase.firestore.FieldValue.increment(1),
-      points: firebase.firestore.FieldValue.increment(pr.winner + pr.streak),
-      streak: streaks[winner],
-      gamesPlayed: firebase.firestore.FieldValue.increment(1)
-    }, { merge: true });
-    for (const p of (r.participants||[]).filter(p => p !== winner)) {
+    const winners = r.winners && r.winners.length ? r.winners : (r.winner ? [r.winner] : []);
+    if (!winners.length) continue;
+    for (const w of winners) {
+      streaks[w] = (streaks[w]||0) + 1;
+      await sRef.collection('playerStats').doc(w).set({
+        wins: firebase.firestore.FieldValue.increment(1),
+        points: firebase.firestore.FieldValue.increment(pr.winner + pr.streak),
+        streak: streaks[w],
+        gamesPlayed: firebase.firestore.FieldValue.increment(1)
+      }, { merge: true });
+    }
+    for (const p of (r.participants||[]).filter(p => !winners.includes(p))) {
       streaks[p] = 0;
       await sRef.collection('playerStats').doc(p).set({
         points: firebase.firestore.FieldValue.increment(pr.participant),
@@ -1600,7 +1602,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
