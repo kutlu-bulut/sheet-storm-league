@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0.9</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.0</span></div>
   </div>
 </div>
 
@@ -1102,7 +1102,7 @@ function loadAdminResults() {
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}',${JSON.stringify(r.winners||[r.winner])})">✏ Edit</button>
+            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}','${(r.winners||[r.winner]).join('|')}')">✏ Edit</button>
             <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
           </div>
         </td>
@@ -1127,11 +1127,11 @@ function toggleEditWinner(el) {
   el.querySelector('.chip-icon').textContent = el.classList.contains('won') ? '🏆' : '👤';
 }
 
-function openEditModal(id, gameType, winner, date, winners) {
+function openEditModal(id, gameType, winner, date, winnersStr) {
   document.getElementById('editResultId').value = id;
   document.getElementById('editGameType').value = gameType;
   document.getElementById('editDate').value = date;
-  const winList = winners ? (Array.isArray(winners) ? winners : [winners]) : (winner ? [winner] : []);
+  const winList = winnersStr ? winnersStr.split('|') : (winner ? [winner] : []);
   document.querySelectorAll('#editWinnerChips .chip').forEach(c => {
     const isWinner = winList.includes(c.dataset.name);
     c.classList.toggle('won', isWinner);
@@ -1600,7 +1600,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.9</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
