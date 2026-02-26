@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.0.9</span></div>
   </div>
 </div>
 
@@ -430,7 +430,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
           <div class="point-row"><div class="point-label">🏆 Winner</div><div class="pt-wrap"><button onclick="adjustPts('winner',-1)">−</button><div class="pt-val" id="pts-winner">3</div><button onclick="adjustPts('winner',1)">＋</button></div><span style="font-size:12px;color:var(--muted)">pts</span></div>
           <div class="point-row"><div class="point-label">🙋 Participant</div><div class="pt-wrap"><button onclick="adjustPts('participant',-1)">−</button><div class="pt-val" id="pts-participant">1</div><button onclick="adjustPts('participant',1)">＋</button></div><span style="font-size:12px;color:var(--muted)">pts</span></div>
           <div class="point-row"><div class="point-label">🔥 Streak bonus</div><div class="pt-wrap"><button onclick="adjustPts('streak',-1)">−</button><div class="pt-val" id="pts-streak">1</div><button onclick="adjustPts('streak',1)">＋</button></div><span style="font-size:12px;color:var(--muted)">pts</span></div>
-          <div style="margin-top:20px"><button class="btn" onclick="savePoints()">Save Point Rules</button></div>
+          <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" onclick="savePoints()">Save Point Rules</button><button class="btn sec" onclick="recalculateAllStats()">🔄 Recalculate Stats</button></div>
         </div>
         <div class="admin-card">
           <div class="admin-title">📊 Preview</div>
@@ -739,7 +739,7 @@ function loadRecentGames() {
     snapshot.forEach(d => {
       const r = d.data();
       // Include if matches current season, OR is a legacy result (no seasonId) belonging to oldest season
-      const rSeason = r.seasonId || legacySeasonId;
+      const rSeason = r.seasonId || currentSeason?.id;
       if (!currentSeason || rSeason === currentSeason.id) results.push({ id: d.id, ...r });
     });
     const rg = document.getElementById('recentGames');
@@ -799,8 +799,9 @@ function togglePlayer(el) {
 
 // ── SUBMIT RESULT ─────────────────────────────────────────────
 async function submitResult() {
-  const winner = Object.keys(chipState).find(k => chipState[k]===2);
-  if (!winner) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select a winner (tap twice)</span>'; return; }
+  const winners = Object.keys(chipState).filter(k => chipState[k]===2);
+  const winner = winners[0] || null;
+  if (!winners.length) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select winner(s) (tap twice)</span>'; return; }
   const participants = Object.keys(chipState).filter(k => chipState[k]>0);
   if (participants.length < 2) { document.getElementById('winnerNote').innerHTML='<span style="color:var(--accent2)">⚠ Select at least 2 players</span>'; return; }
   const btn = document.querySelector('.form-submit');
@@ -808,14 +809,13 @@ async function submitResult() {
   const gameType = document.getElementById('gameType').value;
   const gameDate = document.getElementById('gameDate').value;
   try {
-    // Duplicate check: same game type + date + winner
+    // Duplicate check
     const dupCheck = await db.collection('results').get();
     const dupFound = [];
     dupCheck.forEach(d => {
       const r = d.data();
       const rd = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
-      const rdStr = rd.toISOString().split('T')[0];
-      if (rdStr === gameDate && r.gameType === gameType) dupFound.push(r);
+      if (rd.toISOString().split('T')[0] === gameDate && r.gameType === gameType) dupFound.push(r);
     });
     if (dupFound.length > 0) {
       const existingWinner = dupFound[0].winner;
@@ -825,27 +825,50 @@ async function submitResult() {
     }
     btn.textContent='Saving...';
     await db.collection('results').add({
-      gameType, winner, participants,
+      gameType, winner, winners, participants,
       playedAt: new Date(gameDate+'T12:00:00'),
       submittedBy: currentUser.name,
       seasonId: currentSeason ? currentSeason.id : null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await db.collection('players').doc(winner).update({
-      wins: firebase.firestore.FieldValue.increment(1),
-      points: firebase.firestore.FieldValue.increment(pts.winner + pts.streak),
-      streak: firebase.firestore.FieldValue.increment(1),
-      gamesPlayed: firebase.firestore.FieldValue.increment(1)
-    });
-    for (const p of participants.filter(p=>p!==winner)) {
-      await db.collection('players').doc(p).update({
-        points: firebase.firestore.FieldValue.increment(pts.participant),
-        streak: 0,  // reset streak on loss
+    // Update players collection
+    for (const w of winners) {
+      await db.collection('players').doc(w).update({
+        wins: firebase.firestore.FieldValue.increment(1),
+        points: firebase.firestore.FieldValue.increment(pts.winner + pts.streak),
+        streak: firebase.firestore.FieldValue.increment(1),
         gamesPlayed: firebase.firestore.FieldValue.increment(1)
       });
     }
+    for (const p of participants.filter(p => !winners.includes(p))) {
+      await db.collection('players').doc(p).update({
+        points: firebase.firestore.FieldValue.increment(pts.participant),
+        streak: 0,
+        gamesPlayed: firebase.firestore.FieldValue.increment(1)
+      });
+    }
+    // Update season playerStats
+    if (currentSeason) {
+      const pr = currentSeason.pointRules || pts;
+      const sRef = db.collection('seasons').doc(currentSeason.id);
+      for (const w of winners) {
+        await sRef.collection('playerStats').doc(w).set({
+          wins: firebase.firestore.FieldValue.increment(1),
+          points: firebase.firestore.FieldValue.increment(pr.winner + pr.streak),
+          streak: firebase.firestore.FieldValue.increment(1),
+          gamesPlayed: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      }
+      for (const p of participants.filter(p => !winners.includes(p))) {
+        await sRef.collection('playerStats').doc(p).set({
+          points: firebase.firestore.FieldValue.increment(pr.participant),
+          streak: 0,
+          gamesPlayed: firebase.firestore.FieldValue.increment(1)
+        }, { merge: true });
+      }
+    }
     closeModal(); launchConfetti(); deselectAllPlayers();
-    showToast('🎉 ' + winner + ' wins the ' + gameType + ' game!');
+    showToast('🎉 ' + winners.join(' & ') + ' win' + (winners.length===1?'s':'') + ' the ' + gameType + ' game!');
   } catch(e) { showToast('Error saving result', true); console.error(e); }
   btn.disabled=false; btn.textContent='Save Result';
 }
@@ -1079,7 +1102,7 @@ function loadAdminResults() {
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}')">✏ Edit</button>
+            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}',${JSON.stringify(r.winners||[r.winner])})">✏ Edit</button>
             <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
           </div>
         </td>
@@ -1098,11 +1121,23 @@ function loadAdminResults() {
   }).catch(e => { container.innerHTML = '<div class="empty-state">Error loading results</div>'; console.error(e); });
 }
 
-function openEditModal(id, gameType, winner, date) {
+function toggleEditWinner(el) {
+  el.classList.toggle('won');
+  el.classList.toggle('sel', el.classList.contains('won'));
+  el.querySelector('.chip-icon').textContent = el.classList.contains('won') ? '🏆' : '👤';
+}
+
+function openEditModal(id, gameType, winner, date, winners) {
   document.getElementById('editResultId').value = id;
   document.getElementById('editGameType').value = gameType;
-  document.getElementById('editWinner').value = winner;
   document.getElementById('editDate').value = date;
+  const winList = winners ? (Array.isArray(winners) ? winners : [winners]) : (winner ? [winner] : []);
+  document.querySelectorAll('#editWinnerChips .chip').forEach(c => {
+    const isWinner = winList.includes(c.dataset.name);
+    c.classList.toggle('won', isWinner);
+    c.classList.toggle('sel', isWinner);
+    c.querySelector('.chip-icon').textContent = isWinner ? '🏆' : '👤';
+  });
   document.getElementById('editResultModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -1110,14 +1145,16 @@ function closeEditModal() {
   document.getElementById('editResultModal').classList.remove('open');
   document.body.style.overflow = '';
 }
-document.getElementById('editResultModal').addEventListener('click', e => { if(e.target===document.getElementById('editResultModal')) closeEditModal(); });
+document.addEventListener('click', e => { if(e.target && e.target.id==='editResultModal') closeEditModal(); });
 
 async function saveEditResult() {
   const id = document.getElementById('editResultId').value;
   const gameType = document.getElementById('editGameType').value.trim();
-  const winner = document.getElementById('editWinner').value;
+  const editWinnerEls = document.querySelectorAll('#editWinnerChips .chip.won');
+  const winners = Array.from(editWinnerEls).map(c => c.dataset.name);
+  const winner = winners[0] || null;
   const date = document.getElementById('editDate').value;
-  if (!gameType || !winner || !date) { showToast('Please fill in all fields', true); return; }
+  if (!gameType || !winners.length || !date) { showToast('Please fill in all fields', true); return; }
   const btn = document.querySelector('#editResultModal .form-submit');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -1156,7 +1193,7 @@ async function recalculateAllStats() {
   const results = [];
   snap.forEach(d => {
     const r = d.data();
-    const rSeason = r.seasonId || legacySeasonId;
+    const rSeason = r.seasonId || currentSeason?.id;
     if (rSeason === currentSeason.id) results.push(r);
   });
   results.sort((a,b) => (a.playedAt?.seconds||0)-(b.playedAt?.seconds||0));
@@ -1181,22 +1218,15 @@ async function recalculateAllStats() {
       }, { merge: true });
     }
   }
+  showToast(`✅ Recalculated from ${results.length} results!`);
 }
 
 
 
 async function loadCurrentSeason() {
   try {
-    // Find oldest season (legacy results belong here)
-    const allSnap = await db.collection('seasons').get();
-    if (!allSnap.empty) {
-      let oldest = null, oldestTime = Infinity;
-      allSnap.forEach(d => {
-        const t = d.data().startDate?.seconds || 0;
-        if (t < oldestTime) { oldestTime = t; oldest = d.id; }
-      });
-      legacySeasonId = oldest;
-    }
+    // Legacy results (no seasonId) fall back to the active season
+    // (after migration all results should have a seasonId anyway)
     // Find active season
     const snap = await db.collection('seasons').where('status','==','active').limit(1).get();
     if (!snap.empty) {
@@ -1243,6 +1273,20 @@ async function migrateLegacyResults() {
   }
 }
 
+
+async function openEditSeasonDate(id, currentDate, name) {
+  const newDate = prompt(`Edit start date for "${name}":`, currentDate);
+  if (!newDate) return;
+  // Validate date format
+  const parsed = new Date(newDate + 'T00:00:00');
+  if (isNaN(parsed.getTime())) { showToast('Invalid date format — use YYYY-MM-DD', true); return; }
+  try {
+    await db.collection('seasons').doc(id).update({ startDate: parsed });
+    showToast('✅ Start date updated!');
+    loadSeasonsAdmin();
+  } catch(e) { showToast('Error updating date', true); console.error(e); }
+}
+
 async function loadSeasonsAdmin() {
   const container = document.getElementById('seasonsList');
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
@@ -1273,7 +1317,10 @@ async function loadSeasonsAdmin() {
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px">${startStr} → ${endStr} · Win: ${s.pointRules?.winner||3}pts</div>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button class="btn sec sm" onclick="openEditSeasonDate('${s.id}','${start.toISOString().split('T')[0]}','${s.name}')">✏ Date</button>
         ${isActive ? `<button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.3);white-space:nowrap" onclick="closeSeason('${s.id}','${s.name}')">🔒 Close Season</button>` : ''}
+      </div>
       </div>`;
     });
     container.innerHTML = rows.join('');
@@ -1532,10 +1579,17 @@ seedPlayersIfNeeded().catch(console.error);
       <input class="form-inp" type="text" id="editGameType">
     </div>
     <div class="form-row">
-      <label class="form-label">Winner</label>
-      <select class="form-sel" id="editWinner">
-        <option>Andreea</option><option>Kutlu</option><option>Linn</option><option>Ludvig</option><option>Nicolay</option><option>Robert</option><option>Teddy</option><option>Xin</option>
-      </select>
+      <label class="form-label">Winner(s) <span style="font-weight:400;color:var(--muted)">(tap to toggle)</span></label>
+      <div id="editWinnerChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+        <div class="chip" data-name="Andreea" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Andreea</div>
+        <div class="chip" data-name="Kutlu" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Kutlu</div>
+        <div class="chip" data-name="Linn" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Linn</div>
+        <div class="chip" data-name="Ludvig" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Ludvig</div>
+        <div class="chip" data-name="Nicolay" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Nicolay</div>
+        <div class="chip" data-name="Robert" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Robert</div>
+        <div class="chip" data-name="Teddy" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Teddy</div>
+        <div class="chip" data-name="Xin" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Xin</div>
+      </div>
     </div>
     <div class="form-row">
       <label class="form-label">Date</label>
@@ -1546,7 +1600,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.0.9</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
