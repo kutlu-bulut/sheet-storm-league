@@ -93,9 +93,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
 .shame-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px;cursor:pointer;}
 .shame-name:hover{color:var(--accent2);}
 
-.col-header{display:grid;grid-template-columns:40px 1fr auto auto auto;gap:16px;padding:0 20px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+.col-header{display:grid;grid-template-columns:40px 1fr auto auto auto auto;gap:16px;padding:0 20px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
 .col-right{text-align:right;}
-.player-row{display:grid;grid-template-columns:40px 1fr auto auto auto;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 20px;margin-bottom:8px;transition:transform 0.15s,border-color 0.15s;cursor:pointer;}
+.player-row{display:grid;grid-template-columns:40px 1fr auto auto auto auto;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 20px;margin-bottom:8px;transition:transform 0.15s,border-color 0.15s;cursor:pointer;}
 .player-row:hover{transform:translateX(4px);border-color:rgba(108,99,255,0.4);}
 .player-row.top1{border-color:rgba(255,215,0,0.3);background:linear-gradient(90deg,rgba(255,215,0,0.05),var(--surface));}
 .player-row.top2{border-color:rgba(192,192,192,0.2);}
@@ -254,7 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.1</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.7</span></div>
   </div>
 </div>
 
@@ -348,7 +348,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="champion-card" id="champCard"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
     <div class="shame-card" id="shameCard" style="display:none"></div>
     <div class="section-title">All-time standings</div>
-    <div class="col-header"><div>#</div><div>Player</div><div>Streak</div><div class="col-right">Wins</div><div class="col-right">Points</div></div>
+    <div class="col-header"><div>#</div><div>Player</div><div>Streak</div><div class="col-right">Wins</div><div class="col-right">Played</div><div class="col-right">Points</div></div>
     <div id="leaderboardRows"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
   </div>
 
@@ -725,6 +725,7 @@ function loadLeaderboard() {
           <div><div class="pname">${p.name}</div><div class="prole">${p.role}</div></div></div>
         <div class="streak ${skCls}">${sk}</div>
         <div class="wins">${p.wins||0}</div>
+        <div class="pts-col" style="min-width:48px;text-align:center;color:var(--muted);font-size:13px">${p.gamesPlayed||0}</div>
         <div class="pts-col">${p.points||0} pts</div>
       </div>`;
     }).join('');
@@ -749,7 +750,7 @@ function loadRecentGames() {
       return `<div class="recent-game">
         <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
         <div class="gpill">${r.gameType}</div>
-        <div class="gwinner">${r.winner} wins</div>
+        <div class="gwinner">${(r.winners && r.winners.length ? r.winners : [r.winner||""]).join(" & ")} win${(r.winners && r.winners.length > 1) ? "" : "s"}</div>
       </div>`;
     }).join('');
 
@@ -791,9 +792,9 @@ function togglePlayer(el) {
   const name = el.dataset.name, state = chipState[name]||0;
   if (state===0) { chipState[name]=1; el.classList.add('sel'); el.classList.remove('won'); el.querySelector('.chip-icon').textContent='✓'; }
   else if (state===1) {
-    document.querySelectorAll('.chip.won').forEach(c => { c.classList.remove('won'); c.classList.add('sel'); c.querySelector('.chip-icon').textContent='✓'; chipState[c.dataset.name]=1; });
     chipState[name]=2; el.classList.add('sel','won'); el.querySelector('.chip-icon').textContent='🏆';
-    document.getElementById('winnerNote').innerHTML = `<strong style="color:var(--accent3)">🏆 ${name} is the winner!</strong>`;
+    const curWinners = Object.keys(chipState).filter(k=>chipState[k]===2);
+    document.getElementById('winnerNote').innerHTML = `<strong style="color:var(--accent3)">🏆 ${curWinners.join(' & ')} win${curWinners.length===1?'s':''}!</strong>`;
   } else { chipState[name]=0; el.classList.remove('sel','won'); el.querySelector('.chip-icon').textContent='👤'; }
 }
 
@@ -1161,6 +1162,7 @@ async function saveEditResult() {
     await db.collection('results').doc(id).update({
       gameType,
       winner,
+      winners,
       playedAt: new Date(date + 'T12:00:00')
     });
     closeEditModal();
@@ -1183,18 +1185,18 @@ async function deleteResult(id) {
 async function recalculateAllStats() {
   if (!currentSeason) { showToast('No active season', true); return; }
   const sRef = db.collection('seasons').doc(currentSeason.id);
-  // Reset all playerStats
-  const statsSnap = await sRef.collection('playerStats').get();
-  const batch = db.batch();
-  statsSnap.forEach(d => batch.set(d.ref, { wins:0, points:0, streak:0, gamesPlayed:0 }));
-  await batch.commit();
-  // Replay this season's results chronologically
+  // Reset ALL known players to zero (not just those with existing docs)
+  const resetBatch = db.batch();
+  for (const name of Object.keys(PLAYER_CONFIG)) {
+    resetBatch.set(sRef.collection('playerStats').doc(name), { wins:0, points:0, streak:0, gamesPlayed:0 });
+  }
+  await resetBatch.commit();
+  // Replay ONLY results explicitly tagged with this season
   const snap = await db.collection('results').get();
   const results = [];
   snap.forEach(d => {
     const r = d.data();
-    const rSeason = r.seasonId || currentSeason?.id;
-    if (rSeason === currentSeason.id) results.push(r);
+    if (r.seasonId === currentSeason.id) results.push(r);
   });
   results.sort((a,b) => (a.playedAt?.seconds||0)-(b.playedAt?.seconds||0));
   const pr = currentSeason.pointRules || pts;
@@ -1602,7 +1604,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.7</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
