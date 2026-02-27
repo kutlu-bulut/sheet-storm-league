@@ -95,6 +95,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
 
 .col-header{display:grid;grid-template-columns:40px 1fr auto auto auto auto;gap:16px;padding:0 20px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
 .col-right{text-align:right;}
+.winrate-tip{cursor:help;}
+.winrate-tip[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 6px);right:0;background:#1e2029;border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 10px;border-radius:8px;white-space:nowrap;z-index:100;pointer-events:none;font-family:'Inter',sans-serif;font-weight:400;}
 .player-row{display:grid;grid-template-columns:40px 1fr auto auto auto auto;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 20px;margin-bottom:8px;transition:transform 0.15s,border-color 0.15s;cursor:pointer;}
 .player-row:hover{transform:translateX(4px);border-color:rgba(108,99,255,0.4);}
 .player-row.top1{border-color:rgba(255,215,0,0.3);background:linear-gradient(90deg,rgba(255,215,0,0.05),var(--surface));}
@@ -254,7 +256,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.7</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.9</span></div>
   </div>
 </div>
 
@@ -677,7 +679,14 @@ function loadLeaderboard() {
       const s = seasonStats[name] || { wins:0, points:0, streak:0, gamesPlayed:0 };
       return { name, ...cfg, ...s };
     });
-    players.sort((a,b) => (b.points||0) - (a.points||0));
+    players.sort((a,b) => {
+      const ptsDiff = (b.points||0) - (a.points||0);
+      if (ptsDiff !== 0) return ptsDiff;
+      // Tiebreaker: best win rate
+      const rateA = (a.gamesPlayed||0) > 0 ? (a.wins||0) / a.gamesPlayed : 0;
+      const rateB = (b.gamesPlayed||0) > 0 ? (b.wins||0) / b.gamesPlayed : 0;
+      return rateB - rateA;
+    });
 
     // Champion card
     const champ = players[0];
@@ -706,7 +715,7 @@ function loadLeaderboard() {
         <div class="shame-info">
           <div class="shame-avatar" style="background:${shame.color||'linear-gradient(135deg,#ff6b6b,#c0392b)'}">${shame.init||shame.name.slice(0,2)}</div>
           <div><div class="shame-name">${shame.name}</div>
-          <div class="shame-meta">${shame.role} · 😬 ${losses} game${losses!==1?'s':''} without a win</div></div>
+          <div class="shame-meta">${shame.role} · only ${shame.wins||0} win${(shame.wins||0)!==1?'s':''} from ${shame.gamesPlayed} games</div></div>
         </div>`;
       sc.style.display = 'block';
     } else { sc.style.display = 'none'; }
@@ -726,7 +735,12 @@ function loadLeaderboard() {
         <div class="streak ${skCls}">${sk}</div>
         <div class="wins">${p.wins||0}</div>
         <div class="pts-col" style="min-width:48px;text-align:center;color:var(--muted);font-size:13px">${p.gamesPlayed||0}</div>
-        <div class="pts-col">${p.points||0} pts</div>
+        <div class="pts-col" style="position:relative">
+          <span class="pts-val">${p.points||0} pts</span>
+          <span class="winrate-tip" title="Win rate: ${p.gamesPlayed>0?Math.round((p.wins||0)/p.gamesPlayed*100):0}% (used as tiebreaker)">
+            <span style="font-size:10px;color:var(--muted);display:block;margin-top:1px">${p.gamesPlayed>0?Math.round((p.wins||0)/p.gamesPlayed*100):0}%</span>
+          </span>
+        </div>
       </div>`;
     }).join('');
   });
@@ -1604,7 +1618,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.7</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.9</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
