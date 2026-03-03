@@ -256,7 +256,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.1.9</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.2.9</span></div>
   </div>
 </div>
 
@@ -347,8 +347,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
 
   <!-- LEADERBOARD -->
   <div class="page active" id="page-leaderboard">
-    <div class="champion-card" id="champCard"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
-    <div class="shame-card" id="shameCard" style="display:none"></div>
     <div class="section-title">All-time standings</div>
     <div class="col-header"><div>#</div><div>Player</div><div>Streak</div><div class="col-right">Wins</div><div class="col-right">Played</div><div class="col-right">Points</div></div>
     <div id="leaderboardRows"><div class="loading-state"><div class="spinner"></div>Loading...</div></div>
@@ -537,6 +535,9 @@ let currentSeason = null;  // { id, name, status, pointRules }
 let legacySeasonId = null; // oldest season — legacy results belong here
 let selectedLogin = null;
 const chipState = {};
+let recentLimit = 8;
+let profLimit = 5;
+let myLimit = 8;
 let pts = { winner:3, participant:1, streak:1 };
 
 // ── SEED PLAYERS ─────────────────────────────────────────────
@@ -666,8 +667,6 @@ function showToast(msg, isError) {
 function loadLeaderboard() {
   if (!currentSeason) {
     document.getElementById('leaderboardRows').innerHTML = '<div class="empty-state">No active season — ask admin to create one 📅</div>';
-    document.getElementById('champCard').innerHTML = '';
-    document.getElementById('shameCard').style.display = 'none';
     return;
   }
   // Read from seasons/{id}/playerStats subcollection — no orderBy to avoid index requirement
@@ -688,37 +687,7 @@ function loadLeaderboard() {
       return rateB - rateA;
     });
 
-    // Champion card
-    const champ = players[0];
-    document.getElementById('champCard').innerHTML = `
-      <div class="champ-label">Current Leader</div>
-      <div class="champ-info">
-        <div class="champ-avatar" style="background:${champ.color||'var(--accent)'}" onclick="openProfile('${champ.name}')">${champ.init||champ.name.slice(0,2)}</div>
-        <div>
-          <div class="champ-name" onclick="openProfile('${champ.name}')">${champ.name}</div>
-          <div class="champ-meta">${champ.role} &nbsp;·&nbsp; <strong>${champ.streak>0?'🔥 '+champ.streak+'-win streak':'No streak'}</strong></div>
-        </div>
-        <div class="champ-stats">
-          <div class="cstat"><div class="cstat-val">${champ.wins||0}</div><div class="cstat-label">Wins</div></div>
-          <div class="cstat"><div class="cstat-val">${champ.points||0}</div><div class="cstat-label">Points</div></div>
-          <div class="cstat"><div class="cstat-val">${champ.gamesPlayed||0}</div><div class="cstat-label">Games</div></div>
-        </div>
-      </div>`;
 
-    // Shame board
-    const hasPlayed = players.filter(p => p.gamesPlayed > 0);
-    const shame = hasPlayed.sort((a,b)=>(b.gamesPlayed-b.wins)-(a.gamesPlayed-a.wins))[0];
-    const sc = document.getElementById('shameCard');
-    if (shame && (shame.gamesPlayed-shame.wins) > 0) {
-      const losses = shame.gamesPlayed - shame.wins;
-      sc.innerHTML = `<div class="shame-label">Shame Board</div>
-        <div class="shame-info">
-          <div class="shame-avatar" style="background:${shame.color||'linear-gradient(135deg,#ff6b6b,#c0392b)'}">${shame.init||shame.name.slice(0,2)}</div>
-          <div><div class="shame-name">${shame.name}</div>
-          <div class="shame-meta">${shame.role} · only ${shame.wins||0} win${(shame.wins||0)!==1?'s':''} from ${shame.gamesPlayed} games</div></div>
-        </div>`;
-      sc.style.display = 'block';
-    } else { sc.style.display = 'none'; }
 
     // Leaderboard rows
     const rankEmoji = ['🥇','🥈','🥉'];
@@ -759,14 +728,17 @@ function loadRecentGames() {
     });
     const rg = document.getElementById('recentGames');
     if (!results.length) { rg.innerHTML = '<div class="empty-state">No games yet!</div>'; return; }
-    rg.innerHTML = results.slice(0,8).map(r => {
+    window.renderRecentGames = function renderRecentGames() {
+      rg.innerHTML = results.slice(0, recentLimit).map(r => {
       const d = r.playedAt?.toDate ? r.playedAt.toDate() : (r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt));
       return `<div class="recent-game">
         <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
         <div class="gpill">${r.gameType}</div>
         <div class="gwinner">${(r.winners && r.winners.length ? r.winners : [r.winner||""]).join(" & ")} win${(r.winners && r.winners.length > 1) ? "" : "s"}</div>
       </div>`;
-    }).join('');
+    }).join('') + (results.length > recentLimit ? '<div style="text-align:center;margin-top:12px"><button class="btn sec" onclick="recentLimit+=8;loadRecentGames()">Show more</button></div>' : '');
+    }
+    renderRecentGames();
 
     // Game type stats
     const counts = {};
@@ -910,13 +882,17 @@ document.getElementById('profileModal').addEventListener('click', e => { if(e.ta
 function closeProfileModal() { document.getElementById('profileModal').classList.remove('open'); document.body.style.overflow=''; }
 async function openProfile(name) {
   document.getElementById('profileModal').classList.add('open'); document.body.style.overflow='hidden';
-  const snap = await db.collection('players').doc(name).get();
-  if(!snap.exists)return;
-  const p=snap.data(), cfg=PLAYER_CONFIG[name]||{};
-  document.getElementById('profAv').style.background=p.color||cfg.color||'var(--accent)';
-  document.getElementById('profAv').textContent=p.init||name.slice(0,2);
+  const cfg=PLAYER_CONFIG[name]||{};
+  document.getElementById('profAv').style.background=cfg.color||'var(--accent)';
+  document.getElementById('profAv').textContent=cfg.init||name.slice(0,2);
   document.getElementById('profName').textContent=name;
-  document.getElementById('profRole').textContent=p.role;
+  document.getElementById('profRole').textContent=cfg.role||'';
+  // Read stats from season playerStats (source of truth)
+  let p = { wins:0, points:0, streak:0, gamesPlayed:0 };
+  if (currentSeason) {
+    const sSnap = await db.collection('seasons').doc(currentSeason.id).collection('playerStats').doc(name).get();
+    if (sSnap.exists) p = { ...p, ...sSnap.data() };
+  }
   document.getElementById('profWins').textContent=p.wins||0;
   document.getElementById('profPts').textContent=p.points||0;
   document.getElementById('profStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
@@ -935,9 +911,10 @@ async function openProfile(name) {
         <div style="height:100%;width:${Math.round(c/maxG*100)}%;background:${gcols[i]};border-radius:999px"></div>
       </div>
     </div>`).join(''):'<div style="color:var(--muted);font-size:13px">No games yet</div>';
-  document.getElementById('profHistory').innerHTML=mine.slice(0,5).map(r=>{
+  window.renderProfHistory = function renderProfHistory(){
+    document.getElementById('profHistory').innerHTML=mine.slice(0,profLimit).map(r=>{
     const d=r.playedAt?.toDate?r.playedAt.toDate():r.playedAt?.seconds?new Date(r.playedAt.seconds*1000):new Date(r.playedAt);
-    const won=r.winner===name;
+    const won = r.winners && r.winners.length ? r.winners.includes(name) : r.winner===name;
     return `<div class="hist-row">
       <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
       <div class="gpill">${r.gameType}</div>
@@ -945,25 +922,36 @@ async function openProfile(name) {
       <div class="${won?'res-win':'res-lose'}">${won?'🏆 Win':'Played'}</div>
     </div>`;
   }).join('')||'<div class="empty-state">No games yet</div>';
+    if(mine.length>profLimit){const btn=document.createElement('div');btn.style='text-align:center;margin-top:10px';btn.innerHTML='<button class="btn sec" style="font-size:12px;padding:6px 14px" onclick="profLimit+=5;renderProfHistory()">Show more</button>';document.getElementById('profHistory').appendChild(btn);}
+  }
+  renderProfHistory();
 }
 
 // ── MY STATS ──────────────────────────────────────────────────
 async function populateMyStats() {
   if(!currentUser)return;
   const name=currentUser.name;
-  const snap=await db.collection('players').doc(name).get();
-  if(!snap.exists)return;
-  const p=snap.data();
-  document.getElementById('myAv').style.background=p.color||'var(--accent)';
-  document.getElementById('myAv').textContent=p.init||name.slice(0,2);
+  const cfg=PLAYER_CONFIG[name]||{};
+  document.getElementById('myAv').style.background=cfg.color||'var(--accent)';
+  document.getElementById('myAv').textContent=cfg.init||name.slice(0,2);
   document.getElementById('myName').textContent=name;
-  document.getElementById('myRole').textContent=p.role;
+  document.getElementById('myRole').textContent=cfg.role||'';
+  // Read stats from season playerStats (source of truth)
+  let p = { wins:0, points:0, streak:0, gamesPlayed:0 };
+  if (currentSeason) {
+    const sSnap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').doc(name).get();
+    if(sSnap.exists) p = { ...p, ...sSnap.data() };
+  }
   document.getElementById('myWins').textContent=p.wins||0;
   document.getElementById('myPts').textContent=p.points||0;
   document.getElementById('myGames').textContent=p.gamesPlayed||0;
   document.getElementById('myStreak').textContent=p.streak>0?'🔥'+p.streak:'—';
-  const allSnap=await db.collection('players').orderBy('points','desc').get();
-  let rank=1; allSnap.forEach(d=>{ if(d.id!==name&&(d.data().points||0)>(p.points||0)) rank++; });
+  // Calculate rank from season playerStats
+  let rank=1;
+  if (currentSeason) {
+    const allSnap=await db.collection('seasons').doc(currentSeason.id).collection('playerStats').get();
+    allSnap.forEach(d=>{ if(d.id!==name&&(d.data().points||0)>(p.points||0)) rank++; });
+  }
   document.getElementById('myRank').textContent='#'+rank;
   const rSnap=await db.collection('results').get();
   const mine=[]; rSnap.forEach(d=>{ const r=d.data(); if(r.participants?.includes(name)) mine.push(r); }); mine.sort((a,b)=>{ const at=a.playedAt?.seconds||0, bt=b.playedAt?.seconds||0; return bt-at; });
@@ -974,7 +962,7 @@ async function populateMyStats() {
   const ptsSnap2 = await db.collection('config').doc('points').get();
   const ptsData2 = ptsSnap2.exists ? ptsSnap2.data() : { winner: 3, participant: 1, streak: 1 };
   [...mine].reverse().forEach(r => {
-    const won = r.winner === name;
+    const won = r.winners && r.winners.length ? r.winners.includes(name) : r.winner === name;
     chartPoints += won ? ptsData2.winner : ptsData2.participant;
     const d = r.playedAt?.toDate ? r.playedAt.toDate() : r.playedAt?.seconds ? new Date(r.playedAt.seconds*1000) : new Date(r.playedAt);
     chartLabels.push(d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}));
@@ -1011,9 +999,10 @@ async function populateMyStats() {
     });
   }
 
-  document.getElementById('myHistory').innerHTML=mine.slice(0,8).map(r=>{
+  window.renderMyHistory = function renderMyHistory(){
+    document.getElementById('myHistory').innerHTML=mine.slice(0,myLimit).map(r=>{
     const d=r.playedAt?.toDate?r.playedAt.toDate():r.playedAt?.seconds?new Date(r.playedAt.seconds*1000):new Date(r.playedAt);
-    const won=r.winner===name;
+    const won = r.winners && r.winners.length ? r.winners.includes(name) : r.winner===name;
     return `<div class="hist-row">
       <div class="gdate">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
       <div class="gpill">${r.gameType}</div>
@@ -1021,6 +1010,9 @@ async function populateMyStats() {
       <div class="${won?'res-win':'res-lose'}">${won?'🏆 Win':'Played'}</div>
     </div>`;
   }).join('')||'<div class="empty-state">No games yet!</div>';
+    if(mine.length>myLimit){const btn=document.createElement('div');btn.style='text-align:center;margin-top:10px';btn.innerHTML='<button class="btn sec" style="font-size:12px;padding:6px 14px" onclick="myLimit+=8;renderMyHistory()">Show more</button>';document.getElementById('myHistory').appendChild(btn);}
+  }
+  renderMyHistory();
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
@@ -1436,10 +1428,11 @@ async function loadWeekly() {
     const pr = currentSeason?.pointRules || pts;
     const stats = {};
     results.forEach(r => {
+      const winners = r.winners && r.winners.length ? r.winners : (r.winner ? [r.winner] : []);
       (r.participants||[]).forEach(p => {
         if (!stats[p]) stats[p] = { wins:0, points:0, games:0 };
         stats[p].games++;
-        if (p === r.winner) { stats[p].wins++; stats[p].points += pr.winner; }
+        if (winners.includes(p)) { stats[p].wins++; stats[p].points += pr.winner; }
         else stats[p].points += pr.participant;
       });
     });
@@ -1618,7 +1611,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.1.9</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.2.9</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
