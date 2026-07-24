@@ -295,7 +295,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.6.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.7.0</span></div>
   </div>
 </div>
 
@@ -573,6 +573,22 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
         <button class="btn" onclick="saveDisplayNameSetting()">Lagre navn</button>
       </div>
       <div class="card">
+        <div class="admin-title">🎨 Avatar</div>
+        <div class="admin-sub">Velg din egen emoji og farge.</div>
+        <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:14px">
+          <div class="av" id="setAvatarPreview" style="width:52px;height:52px;font-size:24px"></div>
+          <div class="form-row" style="margin:0">
+            <label class="form-label">Emoji</label>
+            <input class="form-inp" type="text" id="setEmoji" maxlength="2" placeholder="🕊️" style="width:80px;text-align:center;font-size:22px" oninput="updateAvatarPreview()">
+          </div>
+          <div class="form-row" style="margin:0">
+            <label class="form-label">Farge</label>
+            <input type="color" id="setColor" value="#6c5ce7" oninput="updateAvatarPreview()" style="width:52px;height:44px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px">
+          </div>
+        </div>
+        <button class="btn" onclick="saveAvatarSetting()">Lagre avatar</button>
+      </div>
+      <div class="card">
         <div class="admin-title">🔑 Passord</div>
         <div class="admin-sub">Se og endre passordet ditt.</div>
         <div class="form-row" style="margin-bottom:12px">
@@ -644,7 +660,7 @@ async function loadPlayerMeta(){
 function applyUserBadge(id){
   const m = pMeta(id);
   const av = document.getElementById('userBadgeAv');
-  av.style.background = m.color; av.textContent = m.init;
+  av.style.background = m.color; av.textContent = m.emoji;
   document.getElementById('userBadgeName').textContent = m.name;
 }
 
@@ -657,7 +673,7 @@ function renderPlayerChips() {
   const loginWrap = document.querySelector('.login-players');
   if (loginWrap) loginWrap.innerHTML = names.map(n => {
     const c = PLAYER_CONFIG[n];
-    return `<div class="login-chip" data-name="${n}" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="${c.tip||''}">${c.emoji||'👤'}</span>${dispName(n)}</div>`;
+    return `<div class="login-chip" data-name="${n}" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="${c.tip||''}">${pMeta(n).emoji}</span>${dispName(n)}</div>`;
   }).join('');
   const addWrap = document.querySelector('.chips-grid');
   if (addWrap) addWrap.innerHTML = names.map(n =>
@@ -798,7 +814,7 @@ async function loadPlayersTable() {
     const pw = p.password || '';
     const isAdmin = p.isAdmin ? 'checked' : '';
     rows.push(`<tr>
-      <td><div class="pmini"><div class="av-sm" style="background:${color}">${init}</div>${name}</div></td>
+      <td><div class="pmini"><div class="av-sm" style="background:${pMeta(name).color}">${pMeta(name).emoji}</div>${dispName(name)}</div></td>
       <td><select class="rsel">${roleOpts}</select></td>
       <td><div style="display:flex;align-items:center;gap:4px">
         <input class="pw-input" type="text" data-player="${name}" value="${pw}" autocomplete="off" data-1p-ignore data-lpignore="true" style="font-family:monospace" />
@@ -832,9 +848,10 @@ function loadLeaderboard() {
     const seasonStats = {};
     snapshot.forEach(d => { seasonStats[d.id] = d.data(); });
     // Always show ALL players from PLAYER_CONFIG, merging season stats over config
-    const players = Object.entries(PLAYER_CONFIG).map(([name, cfg]) => {
+    const players = Object.keys(PLAYER_CONFIG).map(name => {
       const s = seasonStats[name] || { wins:0, points:0, streak:0, gamesPlayed:0 };
-      return { name, ...cfg, ...s };
+      const m = pMeta(name);
+      return { name, color:m.color, emoji:m.emoji, init:m.init, role:m.role, ...s };
     });
     players.sort((a,b) => {
       const ptsDiff = (b.points||0) - (a.points||0);
@@ -857,7 +874,7 @@ function loadLeaderboard() {
       const skCls = p.streak>=3?'s-hot':p.streak>=2?'s-warm':'s-cold';
       return `<div class="player-row ${topCls}" onclick="openProfile('${p.name}')">
         <div class="rank ${rankCls}">${rank}</div>
-        <div class="pident"><div class="av" style="background:${p.color||'var(--accent)'}">${p.init||p.name.slice(0,2)}</div>
+        <div class="pident"><div class="av" style="background:${p.color||'var(--accent)'}">${p.emoji||p.init||p.name.slice(0,2)}</div>
           <div><div class="pname">${dispName(p.name)}</div><div class="prole">${p.role}</div></div></div>
         <div class="streak ${skCls}">${sk}</div>
         <div class="wins">${p.wins||0}</div>
@@ -1042,8 +1059,9 @@ function closeProfileModal() { document.getElementById('profileModal').classList
 async function openProfile(name) {
   document.getElementById('profileModal').classList.add('open'); document.body.style.overflow='hidden';
   const cfg=PLAYER_CONFIG[name]||{};
-  document.getElementById('profAv').style.background=cfg.color||'var(--accent)';
-  document.getElementById('profAv').textContent=cfg.init||name.slice(0,2);
+  const pm=pMeta(name);
+  document.getElementById('profAv').style.background=pm.color;
+  document.getElementById('profAv').textContent=pm.emoji;
   document.getElementById('profName').textContent=dispName(name);
   document.getElementById('profRole').textContent=cfg.role||'';
   // Read stats from season playerStats (source of truth)
@@ -1091,8 +1109,9 @@ async function populateMyStats() {
   if(!currentUser)return;
   const name=currentUser.name;
   const cfg=PLAYER_CONFIG[name]||{};
-  document.getElementById('myAv').style.background=cfg.color||'var(--accent)';
-  document.getElementById('myAv').textContent=cfg.init||name.slice(0,2);
+  const mm=pMeta(name);
+  document.getElementById('myAv').style.background=mm.color;
+  document.getElementById('myAv').textContent=mm.emoji;
   document.getElementById('myName').textContent=dispName(name);
   document.getElementById('myRole').textContent=cfg.role||'';
   // Read stats from season playerStats (source of truth)
@@ -1217,6 +1236,29 @@ function populateSettings(){
   document.getElementById('setDarkMode').checked = ((localStorage.getItem('ssl_theme') || 'light') === 'dark');
   document.getElementById('setDisplayName').value = dispName(id);
   document.getElementById('setPassword').value = currentUser.password || '';
+  const m = pMeta(id);
+  document.getElementById('setEmoji').value = m.emoji;
+  document.getElementById('setColor').value = /^#[0-9a-fA-F]{6}$/.test(m.color) ? m.color : '#6c5ce7';
+  updateAvatarPreview();
+}
+function updateAvatarPreview(){
+  const p = document.getElementById('setAvatarPreview'); if (!p) return;
+  p.style.background = document.getElementById('setColor').value;
+  p.textContent = document.getElementById('setEmoji').value || '👤';
+}
+async function saveAvatarSetting(){
+  if (!currentUser) return;
+  const id = currentUser.name;
+  const emoji = document.getElementById('setEmoji').value.trim() || pMeta(id).emoji;
+  const color = document.getElementById('setColor').value;
+  try {
+    await db.collection('players').doc(id).update({ emoji, color });
+    PLAYER_META[id] = { ...(PLAYER_META[id]||{}), emoji, color };
+    applyUserBadge(id);
+    renderPlayerChips();
+    if (currentSeason) { loadLeaderboard(); loadRecentGames(); }
+    showToast('✅ Avatar lagret!');
+  } catch(e){ showToast('Kunne ikke lagre avatar', true); console.error(e); }
 }
 async function saveDisplayNameSetting(){
   if (!currentUser) return;
@@ -1664,7 +1706,7 @@ async function loadWeekly() {
         const topCls = i < 3 ? ['top1','top2','top3'][i] : '';
         return `<div class="player-row ${topCls}">
           <div class="rank ${rankCls}">${rank}</div>
-          <div class="pident"><div class="av" style="background:${cfg.color||'var(--accent)'}">${cfg.init||name.slice(0,2)}</div>
+          <div class="pident"><div class="av" style="background:${pMeta(name).color}">${pMeta(name).emoji}</div>
             <div><div class="pname">${dispName(name)}</div><div class="prole">${cfg.role||''}</div></div></div>
           <div style="text-align:right;color:var(--muted);font-size:14px">${s.games}</div>
           <div class="wins">${s.wins}</div>
@@ -1818,7 +1860,7 @@ seedPlayersIfNeeded().then(() => renderPlayerChips()).catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.6.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.7.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
