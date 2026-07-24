@@ -250,13 +250,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <div class="login-title">Sheet Storm League</div>
     <div class="login-sub">Sign in to see the leaderboard</div>
     <div class="login-label">Who are you?</div>
-    <div class="login-players"><div class="login-chip" data-name="Andreea" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Courageous warrior">⚔️</span>Andreea</div><div class="login-chip" data-name="Kutlu" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Blessed & lucky">🍀</span>Kutlu</div><div class="login-chip" data-name="Linn" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Waterfall & lake">🌊</span>Linn</div><div class="login-chip" data-name="Ludvig" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Renowned in battle">🛡️</span>Ludvig</div><div class="login-chip" data-name="Nicolay" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Victory of the people">✊</span>Nicolay</div><div class="login-chip" data-name="Robert" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Bright fame">⭐</span>Robert</div><div class="login-chip" data-name="Teddy" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Gift of God">🎁</span>Teddy</div><div class="login-chip" data-name="Xin" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="New & joyful">🌱</span>Xin</div><div class="login-chip" data-name="Frida" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="Peace & beloved">🕊️</span>Frida</div></div>
+    <div class="login-players"><!-- rendered from PLAYER_CONFIG by renderPlayerChips() --></div>
     <label class="login-label">Password</label>
     <input class="login-input" type="password" id="loginPw" placeholder="Password" autocomplete="off" data-1p-ignore data-lpignore="true">
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.3.1</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.3.2</span></div>
   </div>
 </div>
 
@@ -282,7 +282,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
         <button class="btn sec sm" onclick="selectAllPlayers()">Select all</button>
         <button class="btn sec sm" onclick="deselectAllPlayers()">Clear</button>
       </div>
-      <div class="chips-grid"><div class="chip" data-name="Andreea" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Andreea</div><div class="chip" data-name="Kutlu" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Kutlu</div><div class="chip" data-name="Linn" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Linn</div><div class="chip" data-name="Ludvig" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Ludvig</div><div class="chip" data-name="Nicolay" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Nicolay</div><div class="chip" data-name="Robert" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Robert</div><div class="chip" data-name="Teddy" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Teddy</div><div class="chip" data-name="Xin" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Xin</div><div class="chip" data-name="Frida" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>Frida</div></div>
+      <div class="chips-grid"><!-- rendered from PLAYER_CONFIG by renderPlayerChips() --></div>
       <div class="winner-note" id="winnerNote">Tap to add · Tap again to mark as <strong style="color:var(--accent3)">winner 🏆</strong></div>
     </div>
     <div class="form-row">
@@ -523,15 +523,15 @@ db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
 // ── PLAYER CONFIG ────────────────────────────────────────────
 const PLAYER_CONFIG = {
-  "Andreea": {color:"linear-gradient(135deg,#a78bfa,#ec4899)",init:"A",role:"Dev",emoji:"⚔️"},
-  "Kutlu": {color:"linear-gradient(135deg,#06d6a0,#0ea5e9)",init:"K",role:"PS",emoji:"🍀"},
-  "Linn": {color:"linear-gradient(135deg,#ffd166,#f59e0b)",init:"L",role:"Dev",emoji:"🌊"},
-  "Ludvig": {color:"linear-gradient(135deg,#f97316,#ffd166)",init:"Lu",role:"Dev",emoji:"🛡️"},
-  "Nicolay": {color:"linear-gradient(135deg,#6c63ff,#a78bfa)",init:"N",role:"PM",emoji:"✊"},
-  "Robert": {color:"linear-gradient(135deg,#06d6a0,#84cc16)",init:"R",role:"Dev",emoji:"⭐"},
-  "Teddy": {color:"linear-gradient(135deg,#0ea5e9,#6c63ff)",init:"T",role:"Dev",emoji:"🎁"},
-  "Xin": {color:"linear-gradient(135deg,#ff6b6b,#f97316)",init:"X",role:"UX",emoji:"🌱"},
-  "Frida": {color:"linear-gradient(135deg,#fb7185,#e11d48)",init:"F",role:"Dev Mgr",emoji:"🕊️"}
+  "Andreea": {color:"linear-gradient(135deg,#a78bfa,#ec4899)",init:"A",role:"Dev",emoji:"⚔️",tip:"Courageous warrior"},
+  "Kutlu": {color:"linear-gradient(135deg,#06d6a0,#0ea5e9)",init:"K",role:"PS",emoji:"🍀",tip:"Blessed & lucky"},
+  "Linn": {color:"linear-gradient(135deg,#ffd166,#f59e0b)",init:"L",role:"Dev",emoji:"🌊",tip:"Waterfall & lake"},
+  "Ludvig": {color:"linear-gradient(135deg,#f97316,#ffd166)",init:"Lu",role:"Dev",emoji:"🛡️",tip:"Renowned in battle"},
+  "Nicolay": {color:"linear-gradient(135deg,#6c63ff,#a78bfa)",init:"N",role:"PM",emoji:"✊",tip:"Victory of the people"},
+  "Robert": {color:"linear-gradient(135deg,#06d6a0,#84cc16)",init:"R",role:"Dev",emoji:"⭐",tip:"Bright fame"},
+  "Teddy": {color:"linear-gradient(135deg,#0ea5e9,#6c63ff)",init:"T",role:"Dev",emoji:"🎁",tip:"Gift of God"},
+  "Xin": {color:"linear-gradient(135deg,#ff6b6b,#f97316)",init:"X",role:"UX",emoji:"🌱",tip:"New & joyful"},
+  "Frida": {color:"linear-gradient(135deg,#fb7185,#e11d48)",init:"F",role:"Dev Mgr",emoji:"🕊️",tip:"Peace & beloved"}
 };
 const ADMINS = ['Kutlu'];
 let currentUser = null;
@@ -543,6 +543,29 @@ let recentLimit = 8;
 let profLimit = 5;
 let myLimit = 8;
 let pts = { winner:3, participant:1, streak:1 };
+const editChipState = {};  // edit-modal tri-state per player: 0 = didn't play · 1 = played · 2 = winner
+
+// ── RENDER PLAYER CHIPS ───────────────────────────────────────
+// Single source of truth = PLAYER_CONFIG. All three player lists
+// (login, add-result, edit-result) are rendered from it, so a new
+// player only needs to be added to PLAYER_CONFIG.
+function renderPlayerChips() {
+  const names = Object.keys(PLAYER_CONFIG);
+  const loginWrap = document.querySelector('.login-players');
+  if (loginWrap) loginWrap.innerHTML = names.map(n => {
+    const c = PLAYER_CONFIG[n];
+    return `<div class="login-chip" data-name="${n}" onclick="selectLoginPlayer(this)"><span class="login-chip-av" data-tooltip="${c.tip||''}">${c.emoji||'👤'}</span>${n}</div>`;
+  }).join('');
+  const addWrap = document.querySelector('.chips-grid');
+  if (addWrap) addWrap.innerHTML = names.map(n =>
+    `<div class="chip" data-name="${n}" onclick="togglePlayer(this)"><span class="chip-icon">👤</span>${n}</div>`
+  ).join('');
+  const editWrap = document.getElementById('editWinnerChips');
+  if (editWrap) editWrap.innerHTML = names.map(n =>
+    `<div class="chip" data-name="${n}" onclick="toggleEditChip(this)" style="cursor:pointer"><span class="chip-icon">👤</span>${n}</div>`
+  ).join('');
+}
+document.addEventListener('DOMContentLoaded', renderPlayerChips);
 
 // ── SEED PLAYERS ─────────────────────────────────────────────
 async function seedPlayersIfNeeded() {
@@ -1114,7 +1137,7 @@ function loadAdminResults() {
         <td style="font-size:12px;color:var(--muted)">${(r.participants||[]).join(', ')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}','${(r.winners||[r.winner]).join('|')}')">✏ Edit</button>
+            <button class="btn sm" onclick="openEditModal('${id}','${r.gameType}','${r.winner}','${date.toISOString().split('T')[0]}','${(r.winners||[r.winner]).join('|')}','${(r.participants||[]).join('|')}')">✏ Edit</button>
             <button class="btn sm danger" style="background:rgba(255,107,107,0.15);color:var(--accent2);border:1px solid rgba(255,107,107,0.2)" onclick="deleteResult('${id}')">✕ Delete</button>
           </div>
         </td>
@@ -1133,22 +1156,27 @@ function loadAdminResults() {
   }).catch(e => { container.innerHTML = '<div class="empty-state">Error loading results</div>'; console.error(e); });
 }
 
-function toggleEditWinner(el) {
-  el.classList.toggle('won');
-  el.classList.toggle('sel', el.classList.contains('won'));
-  el.querySelector('.chip-icon').textContent = el.classList.contains('won') ? '🏆' : '👤';
+function toggleEditChip(el) {
+  const name = el.dataset.name, state = editChipState[name]||0;
+  if (state===0) { editChipState[name]=1; el.classList.add('sel'); el.classList.remove('won'); el.querySelector('.chip-icon').textContent='✓'; }
+  else if (state===1) { editChipState[name]=2; el.classList.add('sel','won'); el.querySelector('.chip-icon').textContent='🏆'; }
+  else { editChipState[name]=0; el.classList.remove('sel','won'); el.querySelector('.chip-icon').textContent='👤'; }
 }
 
-function openEditModal(id, gameType, winner, date, winnersStr) {
+function openEditModal(id, gameType, winner, date, winnersStr, participantsStr) {
   document.getElementById('editResultId').value = id;
   document.getElementById('editGameType').value = gameType;
   document.getElementById('editDate').value = date;
   const winList = winnersStr ? winnersStr.split('|') : (winner ? [winner] : []);
+  // Older results may predate stored participants — fall back to the winners.
+  const partList = participantsStr ? participantsStr.split('|') : winList.slice();
   document.querySelectorAll('#editWinnerChips .chip').forEach(c => {
-    const isWinner = winList.includes(c.dataset.name);
-    c.classList.toggle('won', isWinner);
-    c.classList.toggle('sel', isWinner);
-    c.querySelector('.chip-icon').textContent = isWinner ? '🏆' : '👤';
+    const name = c.dataset.name;
+    const state = winList.includes(name) ? 2 : (partList.includes(name) ? 1 : 0);
+    editChipState[name] = state;
+    c.classList.toggle('won', state===2);
+    c.classList.toggle('sel', state>=1);
+    c.querySelector('.chip-icon').textContent = state===2 ? '🏆' : state===1 ? '✓' : '👤';
   });
   document.getElementById('editResultModal').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1162,11 +1190,14 @@ document.addEventListener('click', e => { if(e.target && e.target.id==='editResu
 async function saveEditResult() {
   const id = document.getElementById('editResultId').value;
   const gameType = document.getElementById('editGameType').value.trim();
-  const editWinnerEls = document.querySelectorAll('#editWinnerChips .chip.won');
-  const winners = Array.from(editWinnerEls).map(c => c.dataset.name);
+  const winners = Array.from(document.querySelectorAll('#editWinnerChips .chip.won')).map(c => c.dataset.name);
   const winner = winners[0] || null;
+  // Everyone tapped at least once (played ✓ or winner 🏆) is a participant; winners are a subset.
+  const participants = Array.from(document.querySelectorAll('#editWinnerChips .chip.sel')).map(c => c.dataset.name);
   const date = document.getElementById('editDate').value;
-  if (!gameType || !winners.length || !date) { showToast('Please fill in all fields', true); return; }
+  if (!gameType || !date) { showToast('Please fill in all fields', true); return; }
+  if (!winners.length) { showToast('Pick at least one winner (tap twice)', true); return; }
+  if (participants.length < 2) { showToast('Select at least 2 players', true); return; }
   const btn = document.querySelector('#editResultModal .form-submit');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -1174,10 +1205,12 @@ async function saveEditResult() {
       gameType,
       winner,
       winners,
+      participants,
       playedAt: new Date(date + 'T12:00:00')
     });
     closeEditModal();
-    showToast('✅ Result updated!');
+    // Who-played / winner changes affect standings — replay stats from results.
+    await recalculateAllStats();
     loadAdminResults();
   } catch(e) { showToast('Error updating result', true); console.error(e); }
   btn.disabled = false; btn.textContent = 'Save Changes';
@@ -1595,18 +1628,8 @@ seedPlayersIfNeeded().catch(console.error);
       <input class="form-inp" type="text" id="editGameType">
     </div>
     <div class="form-row">
-      <label class="form-label">Winner(s) <span style="font-weight:400;color:var(--muted)">(tap to toggle)</span></label>
-      <div id="editWinnerChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
-        <div class="chip" data-name="Andreea" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Andreea</div>
-        <div class="chip" data-name="Kutlu" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Kutlu</div>
-        <div class="chip" data-name="Linn" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Linn</div>
-        <div class="chip" data-name="Ludvig" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Ludvig</div>
-        <div class="chip" data-name="Nicolay" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Nicolay</div>
-        <div class="chip" data-name="Robert" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Robert</div>
-        <div class="chip" data-name="Teddy" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Teddy</div>
-        <div class="chip" data-name="Xin" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Xin</div>
-        <div class="chip" data-name="Frida" onclick="toggleEditWinner(this)" style="cursor:pointer"><span class="chip-icon">👤</span>Frida</div>
-      </div>
+      <label class="form-label">Players &amp; winner(s) <span style="font-weight:400;color:var(--muted)">(tap: played → 🏆 winner → clear)</span></label>
+      <div id="editWinnerChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"><!-- rendered from PLAYER_CONFIG by renderPlayerChips() --></div>
     </div>
     <div class="form-row">
       <label class="form-label">Date</label>
@@ -1617,7 +1640,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.3.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.3.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
