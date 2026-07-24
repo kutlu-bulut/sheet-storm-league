@@ -256,7 +256,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(14,15,20,0.92);backdrop-fil
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.3.2</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.3.3</span></div>
   </div>
 </div>
 
@@ -531,7 +531,7 @@ const PLAYER_CONFIG = {
   "Robert": {color:"linear-gradient(135deg,#06d6a0,#84cc16)",init:"R",role:"Dev",emoji:"⭐",tip:"Bright fame"},
   "Teddy": {color:"linear-gradient(135deg,#0ea5e9,#6c63ff)",init:"T",role:"Dev",emoji:"🎁",tip:"Gift of God"},
   "Xin": {color:"linear-gradient(135deg,#ff6b6b,#f97316)",init:"X",role:"UX",emoji:"🌱",tip:"New & joyful"},
-  "Frida": {color:"linear-gradient(135deg,#fb7185,#e11d48)",init:"F",role:"Dev Mgr",emoji:"🕊️",tip:"Peace & beloved"}
+  "Frida": {color:"linear-gradient(135deg,#fb7185,#e11d48)",init:"F",role:"DM",emoji:"🕊️",tip:"Peace & beloved"}
 };
 const ADMINS = ['Kutlu'];
 let currentUser = null;
@@ -622,6 +622,7 @@ async function doLogin() {
     loadRecentGames();
     initGameTypeDropdown();
     loadPoints();
+    restoreView(data.isAdmin);
   } catch(e) {
     err.textContent = 'Connection error — check internet';
     console.error(e);
@@ -633,12 +634,30 @@ document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key 
 
 // ── PAGE NAV ──────────────────────────────────────────────────
 function showPage(name, btn) {
+  const pageEl = document.getElementById('page-' + name);
+  if (!pageEl) return;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
+  pageEl.classList.add('active');
+  // Resolve the matching nav tab by name when no button was passed (e.g. on restore).
+  const tab = btn || Array.from(document.querySelectorAll('.nav-tab'))
+    .find(t => (t.getAttribute('onclick') || '').includes("showPage('" + name + "'"));
+  if (tab) tab.classList.add('active');
+  localStorage.setItem('ssl_page', name);  // remember tab so a refresh stays put
   if (name === 'mystats') populateMyStats();
   if (name === 'weekly') loadWeekly();
+}
+
+// Restore the tab (and admin sub-tab) the user was on before a refresh.
+function restoreView(isAdmin) {
+  const savedPage = localStorage.getItem('ssl_page') || 'leaderboard';
+  const page = (savedPage === 'admin' && !isAdmin) ? 'leaderboard' : savedPage;
+  showPage(page, null);
+  if (page === 'admin') {
+    const sub = localStorage.getItem('ssl_admin_tab') || 'points';
+    const subBtn = document.getElementById('atab-' + sub);
+    if (subBtn) showAdminTab(sub, subBtn);
+  }
 }
 
 // ── ADMIN TABS ────────────────────────────────────────────────
@@ -651,6 +670,7 @@ function showAdminTab(name, btn) {
   if (name === 'players') loadPlayersTable();
   if (name === 'gametypes') loadGameTypes();
   if (name === 'seasons') loadSeasonsAdmin();
+  localStorage.setItem('ssl_admin_tab', name);  // remember admin sub-tab across refresh
 }
 
 async function loadPlayersTable() {
@@ -664,8 +684,12 @@ async function loadPlayersTable() {
     const cfg = PLAYER_CFG[name] || {};
     const color = p.color || cfg.color || 'var(--accent)';
     const init = p.init || cfg.init || name.slice(0,2);
-    const role = p.role || 'Dev';
-    const roleOpts = ['PM','Dev','UX','PS'].map(r => `<option${r===role?' selected':''}>${r}</option>`).join('');
+    const ROLES = ['PM','Dev','UX','PS','DM'];
+    let role = p.role || cfg.role || 'Dev';
+    // Fall back to the config role if the stored one isn't a known option
+    // (e.g. legacy "Dev Mgr" seeded before the role was shortened to "DM").
+    if (!ROLES.includes(role)) role = ROLES.includes(cfg.role) ? cfg.role : 'Dev';
+    const roleOpts = ROLES.map(r => `<option${r===role?' selected':''}>${r}</option>`).join('');
     const pw = p.password || '';
     const isAdmin = p.isAdmin ? 'checked' : '';
     rows.push(`<tr>
@@ -1612,6 +1636,7 @@ seedPlayersIfNeeded().catch(console.error);
     loadRecentGames();
     initGameTypeDropdown();
     loadPoints();
+    restoreView(data.isAdmin);
   } catch(e) { console.error('Auto-login failed', e); }
 })();
 </script>
@@ -1640,7 +1665,7 @@ seedPlayersIfNeeded().catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.3.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.3.3</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
