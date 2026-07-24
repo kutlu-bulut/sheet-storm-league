@@ -264,7 +264,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
 .user-dropdown button:hover{background:var(--surface2);}
 .settings-wrap{max-width:560px;display:flex;flex-direction:column;gap:20px;}
 
-/* Dark theme (opt-in via the Tilpass toggle) */
+/* Dark theme (opt-in via the Settings toggle) */
 :root[data-theme="dark"]{
   --bg:#0e0f14;--surface:#181a22;--surface2:#20232f;--border:#2c2f3d;
   --text:#eeeef0;--muted:#9a94ad;
@@ -295,7 +295,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.7.0</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">v3.7.1</span></div>
   </div>
 </div>
 
@@ -383,8 +383,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
         </button>
         <div class="user-dropdown" id="userDropdown">
           <button onclick="showPage('mystats',null);closeUserMenu()">📊 Stats</button>
-          <button onclick="openSettings();closeUserMenu()">⚙️ Tilpass</button>
-          <button onclick="logout()">🚪 Logg ut</button>
+          <button onclick="openSettings();closeUserMenu()">⚙️ Settings</button>
+          <button onclick="logout()">🚪 Log out</button>
         </div>
       </div>
     </div>
@@ -552,29 +552,29 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
     </div>
   </div>
 
-  <!-- TILPASS / SETTINGS -->
+  <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="section-title">Tilpass</div>
+    <div class="section-title">Settings</div>
     <div class="settings-wrap">
       <div class="card">
-        <div class="admin-title">🌓 Utseende</div>
-        <div class="admin-sub">Velg lyst eller mørkt tema. Valget huskes på denne enheten.</div>
+        <div class="admin-title">🌓 Appearance</div>
+        <div class="admin-sub">Choose a light or dark theme. Your choice is remembered on this device.</div>
         <div class="point-row" style="margin-bottom:0">
           <div class="point-label">🌙 Dark mode</div>
           <label class="toggle"><input type="checkbox" id="setDarkMode" onchange="setTheme(this.checked?'dark':'light')"><span class="toggle-slider"></span></label>
         </div>
       </div>
       <div class="card">
-        <div class="admin-title">🙂 Visningsnavn</div>
-        <div class="admin-sub">Navnet som vises for andre. Din interne ID og all historikk er uendret.</div>
+        <div class="admin-title">🙂 Display name</div>
+        <div class="admin-sub">The name shown to others. Your internal ID and all history stay the same.</div>
         <div class="form-row" style="margin-bottom:12px">
-          <input class="form-inp" type="text" id="setDisplayName" maxlength="24" placeholder="Ditt navn">
+          <input class="form-inp" type="text" id="setDisplayName" maxlength="24" placeholder="Your name">
         </div>
-        <button class="btn" onclick="saveDisplayNameSetting()">Lagre navn</button>
+        <button class="btn" onclick="saveDisplayNameSetting()">Save name</button>
       </div>
       <div class="card">
         <div class="admin-title">🎨 Avatar</div>
-        <div class="admin-sub">Velg din egen emoji og farge.</div>
+        <div class="admin-sub">Pick your own emoji and color.</div>
         <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:14px">
           <div class="av" id="setAvatarPreview" style="width:52px;height:52px;font-size:24px"></div>
           <div class="form-row" style="margin:0">
@@ -582,19 +582,19 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
             <input class="form-inp" type="text" id="setEmoji" maxlength="2" placeholder="🕊️" style="width:80px;text-align:center;font-size:22px" oninput="updateAvatarPreview()">
           </div>
           <div class="form-row" style="margin:0">
-            <label class="form-label">Farge</label>
+            <label class="form-label">Color</label>
             <input type="color" id="setColor" value="#6c5ce7" oninput="updateAvatarPreview()" style="width:52px;height:44px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px">
           </div>
         </div>
-        <button class="btn" onclick="saveAvatarSetting()">Lagre avatar</button>
+        <button class="btn" onclick="saveAvatarSetting()">Save avatar</button>
       </div>
       <div class="card">
-        <div class="admin-title">🔑 Passord</div>
-        <div class="admin-sub">Se og endre passordet ditt.</div>
+        <div class="admin-title">🔑 Password</div>
+        <div class="admin-sub">View and change your password.</div>
         <div class="form-row" style="margin-bottom:12px">
-          <input class="form-inp" type="text" id="setPassword" autocomplete="off" data-1p-ignore data-lpignore="true" style="font-family:monospace" placeholder="Passord">
+          <input class="form-inp" type="text" id="setPassword" autocomplete="off" data-1p-ignore data-lpignore="true" style="font-family:monospace" placeholder="Password">
         </div>
-        <button class="btn" onclick="savePasswordSetting()">Lagre passord</button>
+        <button class="btn" onclick="savePasswordSetting()">Save password</button>
       </div>
     </div>
   </div>
@@ -1223,7 +1223,7 @@ document.addEventListener('click', e => {
   if (menu && !menu.contains(e.target)) closeUserMenu();
 });
 
-// ── TILPASS (settings) ────────────────────────────────────────
+// ── SETTINGS ──────────────────────────────────────────────────
 function setTheme(mode){
   document.documentElement.setAttribute('data-theme', mode);
   try { localStorage.setItem('ssl_theme', mode); } catch(e){}
@@ -1257,33 +1257,33 @@ async function saveAvatarSetting(){
     applyUserBadge(id);
     renderPlayerChips();
     if (currentSeason) { loadLeaderboard(); loadRecentGames(); }
-    showToast('✅ Avatar lagret!');
-  } catch(e){ showToast('Kunne ikke lagre avatar', true); console.error(e); }
+    showToast('✅ Avatar saved!');
+  } catch(e){ showToast("Couldn't save avatar", true); console.error(e); }
 }
 async function saveDisplayNameSetting(){
   if (!currentUser) return;
   const id = currentUser.name;
   const newName = document.getElementById('setDisplayName').value.trim();
-  if (!newName) { showToast('Navnet kan ikke være tomt', true); return; }
+  if (!newName) { showToast("Name can't be empty", true); return; }
   try {
     await db.collection('players').doc(id).update({ displayName: newName });
     if (!PLAYER_META[id]) PLAYER_META[id] = {};
     PLAYER_META[id].name = newName;
     applyUserBadge(id);
     if (currentSeason) { loadLeaderboard(); loadRecentGames(); }
-    showToast('✅ Visningsnavn lagret!');
-  } catch(e){ showToast('Kunne ikke lagre navn', true); console.error(e); }
+    showToast('✅ Display name saved!');
+  } catch(e){ showToast("Couldn't save name", true); console.error(e); }
 }
 async function savePasswordSetting(){
   if (!currentUser) return;
   const id = currentUser.name;
   const pw = document.getElementById('setPassword').value;
-  if (!pw) { showToast('Passordet kan ikke være tomt', true); return; }
+  if (!pw) { showToast("Password can't be empty", true); return; }
   try {
     await db.collection('players').doc(id).update({ password: pw });
     currentUser.password = pw;
-    showToast('✅ Passord lagret!');
-  } catch(e){ showToast('Kunne ikke lagre passord', true); console.error(e); }
+    showToast('✅ Password saved!');
+  } catch(e){ showToast("Couldn't save password", true); console.error(e); }
 }
 
 function adjustPts(key,delta) {
@@ -1860,7 +1860,7 @@ seedPlayersIfNeeded().then(() => renderPlayerChips()).catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.7.0</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;">v3.7.1</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
