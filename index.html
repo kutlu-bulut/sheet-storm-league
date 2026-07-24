@@ -295,7 +295,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
     <button class="login-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="loginErr"></div>
     <div class="login-status" id="loginStatus"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Space Grotesk',sans-serif;font-weight:700">v3.7.2</span></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">Sheet Storm League <span style="color:var(--accent);font-family:'Space Grotesk',sans-serif;font-weight:700">v3.7.3</span></div>
   </div>
 </div>
 
@@ -587,14 +587,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.82);backdrop-
           </div>
         </div>
         <button class="btn" onclick="saveAvatarSetting()">Save avatar</button>
-      </div>
-      <div class="card">
-        <div class="admin-title">🔑 Password</div>
-        <div class="admin-sub">View and change your password.</div>
-        <div class="form-row" style="margin-bottom:12px">
-          <input class="form-inp" type="text" id="setPassword" autocomplete="off" data-1p-ignore data-lpignore="true" style="font-family:monospace" placeholder="Password">
-        </div>
-        <button class="btn" onclick="savePasswordSetting()">Save password</button>
       </div>
     </div>
   </div>
@@ -1235,7 +1227,6 @@ function populateSettings(){
   const id = currentUser.name;
   document.getElementById('setDarkMode').checked = ((localStorage.getItem('ssl_theme') || 'light') === 'dark');
   document.getElementById('setDisplayName').value = dispName(id);
-  document.getElementById('setPassword').value = currentUser.password || '';
   const m = pMeta(id);
   document.getElementById('setEmoji').value = m.emoji;
   document.getElementById('setColor').value = firstHex(m.color);
@@ -1287,17 +1278,6 @@ async function saveDisplayNameSetting(){
     if (currentSeason) { loadLeaderboard(); loadRecentGames(); }
     showToast('✅ Display name saved!');
   } catch(e){ showToast("Couldn't save name", true); console.error(e); }
-}
-async function savePasswordSetting(){
-  if (!currentUser) return;
-  const id = currentUser.name;
-  const pw = document.getElementById('setPassword').value;
-  if (!pw) { showToast("Password can't be empty", true); return; }
-  try {
-    await db.collection('players').doc(id).update({ password: pw });
-    currentUser.password = pw;
-    showToast('✅ Password saved!');
-  } catch(e){ showToast("Couldn't save password", true); console.error(e); }
 }
 
 function adjustPts(key,delta) {
@@ -1874,7 +1854,7 @@ seedPlayersIfNeeded().then(() => renderPlayerChips()).catch(console.error);
 </div>
 
 <footer style="text-align:center;padding:24px;margin-top:40px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;">
-  Sheet Storm League <span style="color:var(--accent);font-family:'Space Grotesk',sans-serif;font-weight:700;">v3.7.2</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
+  Sheet Storm League <span style="color:var(--accent);font-family:'Space Grotesk',sans-serif;font-weight:700;">v3.7.3</span> &nbsp;·&nbsp; Tripletex Sheetstorm Team
 </footer>
 
 </body>
